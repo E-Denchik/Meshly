@@ -33,17 +33,20 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
   the existing Phase 1 mock build (`./gradlew assembleDebug`) is completely unaffected by
   anything under `daemon/`. Verified: `./gradlew assembleDebug test` still passes after adding it.
 - `daemon/src/main/java/org/meshly/app/daemon/`:
-  - `RealJamiBridge.kt` — real engine calls (`JamiService.init/fini/addAccount/
-    sendAccountTextMessage/placeCallWithMedia/accept/hangUp/muteLocalMedia/addContact/
-    removeContact/getContacts/getContactDetails/getTrustRequests/acceptTrustRequest/
-    discardTrustRequest/sendTrustRequest`), matching `net.jami.daemon.JamiService`'s real API
-    surface as found in `native/upstream/jami-daemon/bin/jni/*.i`.
+  - `RealJamiBridge.kt` — real engine calls (`JamiService.init/fini/addAccount/getAccountList/
+    getAccountDetails/getVolatileAccountDetails/registerName/sendAccountTextMessage/
+    placeCallWithMedia/accept/hangUp/muteLocalMedia/addContact/removeContact/getContacts/
+    getContactDetails/getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest`),
+    matching `net.jami.daemon.JamiService`'s real API surface as found in
+    `native/upstream/jami-daemon/bin/jni/*.i`. Includes `getJamiId`/`getRegisteredName`
+    convenience wrappers over the raw details maps.
   - `RealContact.kt` — `RealContact`/`RealTrustRequest` value types mapping the raw
     `StringMap`s `getContacts`/`getContactDetails`/`getTrustRequests` return, keyed exactly as
     `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
     produce them.
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about
-    (registration state, incoming call/message, contact added/removed, trust requests).
+    (registration state, incoming call/message, contact added/removed, trust requests, name
+    registration result).
   - `JamiCallbackAdapter.kt` — subclasses of the real `Callback` / `ConfigurationCallback`
     SWIG director classes that forward into `RealJamiEvent`, plus no-op stubs for the other
     five callback interfaces `JamiService.init()` requires (Presence, DataTransfer, Video,
@@ -65,9 +68,9 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
 - Exact SWIG-generated method names on `StringMap`/`VectMap` (assumed `set`/`get`/`add`, matching
   SWIG's default `std_map.i`/`std_vector.i` Java proxies — this is NOT `java.util.Map`'s
   `put`/`containsKey`)
-- Where the actual Jami ID (public key hash / URI) shows up in account details after
-  `addAccount` — `RealJamiBridge.createAccount` currently only returns the daemon's internal
-  `accountId`, not the Jami ID itself
+- `registerName`'s `scheme`/`password` parameters — `RealJamiBridge.registerName` passes empty
+  strings for both, which is assumed fine for the default Jami name server but hasn't been
+  confirmed against a real running daemon
 
 ## Steps to actually build (once you have the resources)
 
@@ -112,9 +115,9 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
    and `org.meshly.app.daemon.RealJamiBridge` currently have similar but not identical shapes
    (accountId vs jamiId being the main one — libjami's accountId is an internal UUID, not the
    Jami public ID). The repositories in `:app` (`AccountRepository`, `ChatRepository`, etc.)
-   were written against the mock's jamiId-centric model; expect to add a small mapping layer
-   (fetch the Jami ID from `JamiService.getAccountDetails(accountId)` once registered) rather
-   than a drop-in swap.
+   were written against the mock's jamiId-centric model; `RealJamiBridge.getJamiId(accountId)`
+   already does the accountId → Jami ID lookup (via `getAccountDetails`'s `Account.username` key)
+   needed to bridge the two, but the repositories themselves haven't been touched yet.
 
 ## Reference: real libjami API surface used here
 
@@ -124,7 +127,10 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 |---|---|
 | Start/stop daemon | `JamiService.init(cfgCb, callCb, presCb, dataCb, videoCb, convCb, netCb)` / `JamiService.fini()` |
 | Create account | `JamiService.getAccountTemplate("RING")` → fill in `Account.alias` → `JamiService.addAccount(details)` |
-| Register username | `JamiService.registerName(accountId, name, scheme, password)` |
+| List accounts | `JamiService.getAccountList()` |
+| Get the actual Jami ID | `JamiService.getAccountDetails(accountId)`'s `Account.username` key — NOT the `accountId` param itself, that's a separate internal id (`RealJamiBridge.getJamiId`) |
+| Registration/device state | `JamiService.getVolatileAccountDetails(accountId)` — `Account.registeredName`/`Account.registrationStatus`/`Account.deviceAnnounced` |
+| Register username | `JamiService.registerName(accountId, name, scheme, password)`, result via `ConfigurationCallback.nameRegistrationEnded` |
 | Send message | `JamiService.sendAccountTextMessage(accountId, to, StringMap("text/plain" -> body), flag)` |
 | Place call | `JamiService.placeCallWithMedia(accountId, to, VectMap of StringMap media attributes)` |
 | Accept/reject/hang up | `JamiService.accept/refuse/hangUp(accountId, callId)` |

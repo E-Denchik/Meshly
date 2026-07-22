@@ -76,4 +76,7 @@ sealed class RealJamiEvent {
     data class ContactAdded(val accountId: String, val uri: String, val confirmed: Boolean) : RealJamiEvent()
 
     data class ContactRemoved(val accountId: String, val uri: String, val banned: Boolean) : RealJamiEvent()
+
+    /** Async result of [RealJamiBridge.registerName]. `state` is libjami's raw int result code. */
+    data class NameRegistrationEnded(val accountId: String, val state: Int, val name: String) : RealJamiEvent()
 }

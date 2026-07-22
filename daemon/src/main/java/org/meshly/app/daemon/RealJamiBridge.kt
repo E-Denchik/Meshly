@@ -103,6 +103,49 @@ object RealJamiBridge {
         return JamiService.addAccount(details)
     }
 
+    /** All account IDs known to the daemon, in daemon-internal accountId form. */
+    fun getAccountList(): List<String> {
+        val raw = JamiService.getAccountList()
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    /**
+     * Persistent account config. Maps to `getAccountDetails(accountId)` (configurationmanager.i).
+     * Key of interest: `Account.username` — for a Jami/"RING"-type account this is set to the
+     * account's identity hash the moment the account is created
+     * (`config_->username = info->accountId` / `conf.username = info.accountId`, both in
+     * src/jamidht/jamiaccount.cpp), i.e. it IS the Jami ID / URI you give out to be added as a
+     * contact or called — not to be confused with the daemon's internal `accountId` parameter
+     * these methods take, which is a separate, purely-local identifier.
+     */
+    fun getAccountDetails(accountId: String): StringMap = JamiService.getAccountDetails(accountId)
+
+    /**
+     * Transient runtime state. Maps to `getVolatileAccountDetails(accountId)`. Keys (all from
+     * src/jami/account_const.h's `VolatileProperties`/`VolatileProperties::Registration`):
+     * `Account.registeredName` (present only once a username lookup/registration has resolved),
+     * `Account.registrationStatus`/`Account.registrationCode`/`Account.registrationDescription`,
+     * `Account.deviceAnnounced` ("true"/"false").
+     */
+    fun getVolatileAccountDetails(accountId: String): StringMap = JamiService.getVolatileAccountDetails(accountId)
+
+    /** Convenience accessor: the actual Jami ID (see [getAccountDetails]'s doc for why). */
+    fun getJamiId(accountId: String): String = getAccountDetails(accountId).get("Account.username").orEmpty()
+
+    /** Convenience accessor for the resolved username, if any name registration succeeded. */
+    fun getRegisteredName(accountId: String): String =
+        getVolatileAccountDetails(accountId).get("Account.registeredName").orEmpty()
+
+    /**
+     * Registers a username on the Jami name server for this account. Maps to
+     * `registerName(account, name, scheme, password)` (configurationmanager.i). Result arrives
+     * asynchronously via `ConfigurationCallback.nameRegistrationEnded`, not as this call's return
+     * value — `scheme`/`password` aren't used for the default Jami name server and empty strings
+     * are the norm there (not confirmed against a real running daemon).
+     */
+    fun registerName(accountId: String, name: String): Boolean =
+        JamiService.registerName(accountId, name, "", "")
+
     /**
      * Maps to `sendAccountTextMessage(accountId, to, message, flag)` (configurationmanager.i).
      * `message` is a StringMap because Jami messages carry a MIME-type-keyed payload map

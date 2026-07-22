@@ -123,6 +123,10 @@ internal class MeshlyConfigurationCallback(
     override fun contactRemoved(accountId: String, uri: String, banned: Boolean) {
         events.tryEmit(RealJamiEvent.ContactRemoved(accountId, uri, banned))
     }
+
+    override fun nameRegistrationEnded(accountId: String, state: Int, name: String) {
+        events.tryEmit(RealJamiEvent.NameRegistrationEnded(accountId, state, name))
+    }
 }
 
 // The remaining four director interfaces (Presence, DataTransfer, Video, Conversation,
