@@ -127,10 +127,9 @@ internal class MeshlyConfigurationCallback(
         events.tryEmit(RealJamiEvent.AccountMessageStatusChanged(accountId, conversationId, peer, messageId, state))
     }
 
-    // NOTE: `received` is `time_t` on the C++ side. SWIG's default typemap for time_t
-    // hasn't been confirmed against a real generated build yet (likely `long`, matches
-    // here) — verify this signature against the SWIG-generated ConfigurationCallback.java
-    // once bin/jni/make-swig.sh has actually been run (see /PHASE2_BUILD.md).
+    // `received` is `time_t` on the C++ side, confirmed as `long` here: jni_interface.i has
+    // `%apply uint64_t { time_t };` followed by `%apply int64_t { uint64_t };`, and SWIG's
+    // default Java mapping for int64_t is `long`.
     override fun incomingTrustRequest(
         accountId: String,
         conversationId: String,
@@ -158,12 +157,64 @@ internal class MeshlyConfigurationCallback(
     }
 }
 
-// The remaining four director interfaces (Presence, DataTransfer, Video, Conversation,
-// NetworkService) are required arguments to JamiService.init(...) but Meshly doesn't
-// consume their signals yet. Empty subclasses are enough since every method in the
-// upstream .i files has a default no-op body.
-internal class MeshlyPresenceCallback : PresenceCallback()
-internal class MeshlyDataTransferCallback : DataTransferCallback()
+/**
+ * Bridges libjami's [PresenceCallback] into [RealJamiEvent]. See [RealPresenceState]'s doc for
+ * why `newBuddyNotification` is the signal that matters here, not the legacy SIP-presence ones.
+ */
+internal class MeshlyPresenceCallback(
+    private val events: MutableSharedFlow<RealJamiEvent>
+) : PresenceCallback() {
+
+    override fun newBuddyNotification(accountId: String, buddyUri: String, status: Int, lineStatus: String) {
+        events.tryEmit(
+            RealJamiEvent.BuddyPresenceChanged(accountId, buddyUri, RealPresenceState.fromWireValue(status), lineStatus)
+        )
+    }
+
+    override fun subscriptionStateChanged(accountId: String, buddyUri: String, state: Int) {
+        events.tryEmit(RealJamiEvent.SubscriptionStateChanged(accountId, buddyUri, state))
+    }
+
+    override fun newServerSubscriptionRequest(remote: String) {
+        events.tryEmit(RealJamiEvent.NewServerSubscriptionRequest(remote))
+    }
+
+    override fun serverError(accountId: String, error: String, msg: String) {
+        events.tryEmit(RealJamiEvent.PresenceServerError(accountId, error, msg))
+    }
+
+    override fun nearbyPeerNotification(accountId: String, buddyUri: String, state: Int, displayname: String) {
+        events.tryEmit(RealJamiEvent.NearbyPeerNotification(accountId, buddyUri, state, displayname))
+    }
+}
+
+/** Bridges libjami's [DataTransferCallback] into [RealJamiEvent]. */
+internal class MeshlyDataTransferCallback(
+    private val events: MutableSharedFlow<RealJamiEvent>
+) : DataTransferCallback() {
+
+    override fun dataTransferEvent(
+        accountId: String,
+        conversationId: String,
+        interactionId: String,
+        fileId: String,
+        eventCode: Int
+    ) {
+        events.tryEmit(
+            RealJamiEvent.DataTransferEvent(
+                accountId,
+                conversationId,
+                interactionId,
+                fileId,
+                RealDataTransferEventCode.fromWireValue(eventCode)
+            )
+        )
+    }
+}
+
+// The remaining three director interfaces (Video, Conversation, NetworkService) are required
+// arguments to JamiService.init(...) but Meshly doesn't consume their signals yet. Empty
+// subclasses are enough since every method in the upstream .i files has a default no-op body.
 internal class MeshlyVideoCallback : VideoCallback()
 internal class MeshlyConversationCallback : ConversationCallback()
 internal class MeshlyNetworkServiceCallback : NetworkServiceCallback()

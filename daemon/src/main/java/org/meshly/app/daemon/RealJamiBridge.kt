@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import net.jami.daemon.Blob
 import net.jami.daemon.JamiService
 import net.jami.daemon.StringMap
+import net.jami.daemon.StringVect
 import net.jami.daemon.VectMap
 
 /**
@@ -69,8 +70,8 @@ object RealJamiBridge {
         JamiService.init(
             MeshlyConfigurationCallback(_events),
             MeshlyCallCallback(_events),
-            MeshlyPresenceCallback(),
-            MeshlyDataTransferCallback(),
+            MeshlyPresenceCallback(_events),
+            MeshlyDataTransferCallback(_events),
             MeshlyVideoCallback(),
             MeshlyConversationCallback(),
             MeshlyNetworkServiceCallback()
@@ -263,6 +264,74 @@ object RealJamiBridge {
      */
     fun answerMediaChangeRequest(accountId: String, callId: String, mediaList: VectMap): Boolean =
         JamiService.answerMediaChangeRequest(accountId, callId, mediaList)
+
+    // --- Presence -------------------------------------------------------------------------------
+    // From presencemanager.i. `newBuddyNotification` (see RealPresence.kt) is the signal that
+    // actually matters for tracked-contact online/offline status on a Jami-only app.
+
+    /** Publishes this account's own presence note/status. Maps to `publish(accountId, status, note)`. */
+    fun publish(accountId: String, online: Boolean, note: String = "") {
+        JamiService.publish(accountId, online, note)
+    }
+
+    /**
+     * Starts or stops tracking a buddy's presence — `flag=true` subscribes, `false`
+     * unsubscribes. Maps to `subscribeBuddy(accountId, uri, flag)`; results arrive via
+     * `PresenceCallback.newBuddyNotification`.
+     */
+    fun subscribeBuddy(accountId: String, uri: String, subscribe: Boolean) {
+        JamiService.subscribeBuddy(accountId, uri, subscribe)
+    }
+
+    /**
+     * Legacy SIP-presence subscription list — see [RealSubscription]'s doc for why this is
+     * unlikely to be useful for a Jami-only account. Maps to `getSubscriptions(accountId)`.
+     */
+    fun getSubscriptions(accountId: String): List<RealSubscription> {
+        val raw = JamiService.getSubscriptions(accountId)
+        return (0 until raw.size()).map { RealSubscription.fromStringMap(raw[it]) }
+    }
+
+    /**
+     * Legacy SIP-presence subscription list — see [RealSubscription]'s doc. Maps to
+     * `setSubscriptions(accountId, uris)`; `uris` is a plain `vector<string>` (`StringVect`),
+     * built the same index/size-based way as [placeCall]'s `VectMap`, not a `java.util.List`.
+     */
+    fun setSubscriptions(accountId: String, uris: List<String>) {
+        val vect = StringVect()
+        uris.forEach { vect.add(it) }
+        JamiService.setSubscriptions(accountId, vect)
+    }
+
+    // --- Data transfer ---------------------------------------------------------------------------
+    // From datatransfer.i.
+
+    /** Sends a file. Fire-and-forget; progress arrives via `DataTransferCallback.dataTransferEvent`. */
+    fun sendFile(accountId: String, conversationId: String, path: String, displayName: String, replyTo: String = "") {
+        JamiService.sendFile(accountId, conversationId, path, displayName, replyTo)
+    }
+
+    /** Accepts/starts downloading an incoming file transfer. Maps to `downloadFile(...)`. */
+    fun downloadFile(accountId: String, conversationId: String, interactionId: String, fileId: String, path: String): Long =
+        JamiService.downloadFile(accountId, conversationId, interactionId, fileId, path)
+
+    fun cancelDataTransfer(accountId: String, conversationId: String, fileId: String): RealDataTransferError =
+        RealDataTransferError.fromWireValue(JamiService.cancelDataTransfer(accountId, conversationId, fileId))
+
+    /**
+     * Maps to `fileTransferInfo(accountId, conversationId, fileId, path_out, total_out,
+     * progress_out)` — see [RealFileTransferInfo]'s doc for why this needs to allocate and pass
+     * in single-element arrays rather than just reading a return value (SWIG `OUTPUT` typemap
+     * pattern, confirmed from datatransfer.i's own typemap block, though the exact array element
+     * type for the two int64_t params isn't confirmed against a real generated build).
+     */
+    fun fileTransferInfo(accountId: String, conversationId: String, fileId: String): RealFileTransferInfo {
+        val pathOut = arrayOf("")
+        val totalOut = longArrayOf(0)
+        val progressOut = longArrayOf(0)
+        val errorCode = JamiService.fileTransferInfo(accountId, conversationId, fileId, pathOut, totalOut, progressOut)
+        return RealFileTransferInfo(RealDataTransferError.fromWireValue(errorCode), pathOut[0], totalOut[0], progressOut[0])
+    }
 
     // --- Contacts -----------------------------------------------------------------------------
     // All calls below come from configurationmanager.i's "/* Contacts */" and "/* trust

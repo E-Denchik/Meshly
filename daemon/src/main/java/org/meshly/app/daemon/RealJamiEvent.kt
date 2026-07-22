@@ -123,4 +123,51 @@ sealed class RealJamiEvent {
         val from: String,
         val state: Int
     ) : RealJamiEvent()
+
+    // --- Presence (PresenceCallback) -----------------------------------------------------------
+
+    /**
+     * A tracked buddy's presence changed. Maps to `PresenceCallback.newBuddyNotification(
+     * accountId, buddyUri, status, lineStatus)` — `status` is [RealPresenceState], the signal
+     * that actually matters for a Jami-only app (see [RealPresenceState]'s doc for why
+     * `getSubscriptions`/[RealSubscription] is legacy-SIP plumbing by comparison).
+     */
+    data class BuddyPresenceChanged(
+        val accountId: String,
+        val buddyUri: String,
+        val status: RealPresenceState,
+        val lineStatus: String
+    ) : RealJamiEvent()
+
+    /** Maps to `PresenceCallback.subscriptionStateChanged(accountId, buddyUri, state)`. */
+    data class SubscriptionStateChanged(val accountId: String, val buddyUri: String, val state: Int) : RealJamiEvent()
+
+    /** SIP presence server pushed us a new subscription request. Legacy-SIP signal, see above. */
+    data class NewServerSubscriptionRequest(val remote: String) : RealJamiEvent()
+
+    /** SIP presence server error. Legacy-SIP signal, see [BuddyPresenceChanged]'s doc. */
+    data class PresenceServerError(val accountId: String, val error: String, val message: String) : RealJamiEvent()
+
+    /** Local-network (mDNS) peer discovery notification. */
+    data class NearbyPeerNotification(
+        val accountId: String,
+        val buddyUri: String,
+        val state: Int,
+        val displayName: String
+    ) : RealJamiEvent()
+
+    // --- Data transfer (DataTransferCallback) --------------------------------------------------
+
+    /**
+     * File transfer progress/state change. Maps to `DataTransferCallback.dataTransferEvent(
+     * accountId, conversationId, interactionId, fileId, eventCode)`; `eventCode` is
+     * [RealDataTransferEventCode].
+     */
+    data class DataTransferEvent(
+        val accountId: String,
+        val conversationId: String,
+        val interactionId: String,
+        val fileId: String,
+        val eventCode: RealDataTransferEventCode
+    ) : RealJamiEvent()
 }

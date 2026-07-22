@@ -38,10 +38,11 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     getLastMessages/setIsComposing/setMessageDisplayed/getMessageStatus/placeCallWithMedia/
     accept/hangUp/hold/resume/muteLocalMedia/getCallList/getCallDetails/
     answerMediaChangeRequest/addContact/removeContact/getContacts/getContactDetails/
-    getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest`), matching
-    `net.jami.daemon.JamiService`'s real API surface as found in
-    `native/upstream/jami-daemon/bin/jni/*.i`. Includes `getJamiId`/`getRegisteredName`
-    convenience wrappers over the raw details maps.
+    getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest/publish/
+    subscribeBuddy/getSubscriptions/setSubscriptions/sendFile/downloadFile/
+    cancelDataTransfer/fileTransferInfo`), matching `net.jami.daemon.JamiService`'s real API
+    surface as found in `native/upstream/jami-daemon/bin/jni/*.i`. Includes
+    `getJamiId`/`getRegisteredName` convenience wrappers over the raw details maps.
   - `RealContact.kt` — `RealContact`/`RealTrustRequest` value types mapping the raw
     `StringMap`s `getContacts`/`getContactDetails`/`getTrustRequests` return, keyed exactly as
     `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
@@ -51,13 +52,21 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     `getCallDetails`'s map, keyed exactly as `Call::getDetails()` builds it (src/call.cpp), plus
     `RealCallState.toSimplified()` bucketing libjami's 11 raw call states down to the 5 states
     Meshly's Phase 1 mock UI already knows.
+  - `RealPresence.kt` — `RealPresenceState` (JamiAccount tracked-buddy presence, the one that
+    matters here) + `RealSubscription` (legacy SIP-presence `getSubscriptions` shape, kept for
+    API completeness).
+  - `RealDataTransfer.kt` — `RealDataTransferEventCode`/`RealDataTransferError` enums and
+    `RealFileTransferInfo`, matching `libjami::DataTransferEventCode`/`DataTransferError`
+    (src/jami/datatransfer_interface.h) exactly (note `DataTransferEventCode` starts at
+    `invalid = 0`, `created = 1`, not `created = 0`).
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about (registration
     state, incoming call/message, new/hold/mute/media-negotiation call signals, contact
-    added/removed, trust requests, name registration result, composing/typing indicator).
-  - `JamiCallbackAdapter.kt` — subclasses of the real `Callback` / `ConfigurationCallback`
-    SWIG director classes that forward into `RealJamiEvent`, plus no-op stubs for the other
-    five callback interfaces `JamiService.init()` requires (Presence, DataTransfer, Video,
-    Conversation, NetworkService) since Meshly doesn't consume those signals yet.
+    added/removed, trust requests, name registration result, composing/typing indicator, buddy
+    presence, file transfer progress).
+  - `JamiCallbackAdapter.kt` — subclasses of all 7 real SWIG director callback classes
+    (`Callback`, `ConfigurationCallback`, `PresenceCallback`, `DataTransferCallback` forward into
+    `RealJamiEvent`; `VideoCallback`/`ConversationCallback`/`NetworkServiceCallback` are still
+    empty no-op stubs since Meshly doesn't consume those signals yet).
 
 None of this compiles right now — `net.jami.daemon.*` (JamiServiceJNI, Callback,
 ConfigurationCallback, ...) only exists after `bin/jni/make-swig.sh` actually runs, which only
@@ -70,14 +79,17 @@ These couldn't be confirmed without running SWIG for real, so they're flagged in
 too — double check them against the generated `net/jami/daemon/*.java` files:
 
 - `sendAccountTextMessage`'s `flag` parameter meaning (currently passing `0`)
-- `time_t received` parameter type in `ConfigurationCallback.incomingTrustRequest` — assumed
-  `Long` in `JamiCallbackAdapter.kt`
 - `VectMap`'s exact API: assumed index/size-based (`size()`, `get(int)`, `add(T)`) rather than a
   `java.util.List`, based on jni_interface.i's own `toNative()` helper for `vector<map<string,
   string>>` using that shape — but whether it also implements `java.lang.Iterable`/`List` (which
   would additionally allow `for`/`.map{}`) isn't confirmed. `StringMap` is on firmer ground: the
   same file's `map<string, string>` javacode block uses `entrySet()`/`put()`/`get()` directly, so
-  it's treated here as a real `java.util.Map<String, String>`, not guessed.
+  it's treated here as a real `java.util.Map<String, String>`, not guessed. Same assumption
+  extends to `StringVect` (`RealJamiBridge.setSubscriptions`).
+- `fileTransferInfo`'s SWIG `OUTPUT`-typemapped `int64_t& total_out`/`progress_out` params: the
+  .i file confirms the pattern generates array-based Java out-params (explicitly shown for the
+  `std::string& OUTPUT` one, which becomes `String[]`), but the exact array element type for the
+  two `int64_t` ones (`long[]` assumed in `RealJamiBridge.fileTransferInfo`) isn't confirmed.
 - `registerName`'s `scheme`/`password` parameters — `RealJamiBridge.registerName` passes empty
   strings for both, which is assumed fine for the default Jami name server but hasn't been
   confirmed against a real running daemon
@@ -162,6 +174,11 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Incoming call/message | Override `Callback.incomingCall` / `Callback.incomingMessage` / `ConfigurationCallback.incomingAccountMessage` |
 | Registration state | Override `ConfigurationCallback.registrationStateChanged` |
 | Contact added/removed events | Override `ConfigurationCallback.contactAdded` / `contactRemoved` |
+| Publish own presence | `JamiService.publish(accountId, online, note)` |
+| Track/untrack a buddy | `JamiService.subscribeBuddy(accountId, uri, flag)`; result via `PresenceCallback.newBuddyNotification(accountId, uri, status, lineStatus)` — `status` is `JamiAccount::PresenceState` (jamiaccount.h): DISCONNECTED=0, AVAILABLE=1, CONNECTED=2 |
+| Legacy SIP presence list | `JamiService.getSubscriptions`/`setSubscriptions(accountId, ...)` — keys `Buddy`/`Status`/`LineStatus`, values incl. `Online`/`Offline` (`libjami::Presence::*_KEY`, presence_const.h) — not the signal to use for a Jami-only account, see `RealPresence.kt` |
+| Send/receive a file | `JamiService.sendFile(accountId, conversationId, path, displayName, replyTo)` / `downloadFile(...)`; progress via `DataTransferCallback.dataTransferEvent(..., eventCode)` — `eventCode` is `libjami::DataTransferEventCode` (datatransfer_interface.h): invalid=0, created=1, unsupported=2, wait_peer_acceptance=3, wait_host_acceptance=4, ongoing=5, finished=6, closed_by_host=7, closed_by_peer=8, invalid_pathname=9, unjoinable_peer=10, timeout_expired=11 |
+| Cancel / query a file transfer | `JamiService.cancelDataTransfer(accountId, conversationId, fileId)` / `fileTransferInfo(...)` — both return `libjami::DataTransferError`: success=0, unknown=1, io=2, invalid_argument=3 |
 
 `"RING"` as the account type string is real and current (`JamiAccount::ACCOUNT_TYPE_JAMI` in
 `src/jamidht/jamiaccount_config.h` is literally `"RING"`, kept for on-disk config compatibility
