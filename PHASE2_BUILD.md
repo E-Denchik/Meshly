@@ -34,9 +34,14 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
   anything under `daemon/`. Verified: `./gradlew assembleDebug test` still passes after adding it.
 - `daemon/src/main/java/org/meshly/app/daemon/`:
   - `RealJamiBridge.kt` — real engine calls (`JamiService.init/fini/addAccount/
-    sendAccountTextMessage/placeCallWithMedia/accept/hangUp/muteLocalMedia`), matching
-    `net.jami.daemon.JamiService`'s real API surface as found in
-    `native/upstream/jami-daemon/bin/jni/*.i`.
+    sendAccountTextMessage/placeCallWithMedia/accept/hangUp/muteLocalMedia/addContact/
+    removeContact/getContacts/getContactDetails/getTrustRequests/acceptTrustRequest/
+    discardTrustRequest/sendTrustRequest`), matching `net.jami.daemon.JamiService`'s real API
+    surface as found in `native/upstream/jami-daemon/bin/jni/*.i`.
+  - `RealContact.kt` — `RealContact`/`RealTrustRequest` value types mapping the raw
+    `StringMap`s `getContacts`/`getContactDetails`/`getTrustRequests` return, keyed exactly as
+    `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
+    produce them.
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about
     (registration state, incoming call/message, contact added/removed, trust requests).
   - `JamiCallbackAdapter.kt` — subclasses of the real `Callback` / `ConfigurationCallback`
@@ -124,9 +129,14 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Place call | `JamiService.placeCallWithMedia(accountId, to, VectMap of StringMap media attributes)` |
 | Accept/reject/hang up | `JamiService.accept/refuse/hangUp(accountId, callId)` |
 | Mute | `JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO"/"MEDIA_TYPE_VIDEO", bool)` |
-| Add contact | `JamiService.addContact` / accept via `acceptTrustRequest` (configurationmanager.i — not yet wrapped in RealJamiBridge) |
+| Add/remove contact | `JamiService.addContact(accountId, uri)` / `removeContact(accountId, uri, ban)` |
+| List contacts | `JamiService.getContacts(accountId)` / `getContactDetails(accountId, uri)` — keys: `id`, `added`, `removed`, `conversationId`, `confirmed`, `banned` (`Contact::toMap()`, jami_contact.h) |
+| Pending incoming requests | `JamiService.getTrustRequests(accountId)` — keys: `from`, `received`, `payload`, `conversationId` (`libjami::Account::TrustRequest`, account_const.h) |
+| Accept/reject a request | `JamiService.acceptTrustRequest` / `discardTrustRequest(accountId, from)` |
+| (Re-)send a request | `JamiService.sendTrustRequest(accountId, to, Blob payload)` |
 | Incoming call/message | Override `Callback.incomingCall` / `Callback.incomingMessage` / `ConfigurationCallback.incomingAccountMessage` |
 | Registration state | Override `ConfigurationCallback.registrationStateChanged` |
+| Contact added/removed events | Override `ConfigurationCallback.contactAdded` / `contactRemoved` |
 
 `"RING"` as the account type string is real and current (`JamiAccount::ACCOUNT_TYPE_JAMI` in
 `src/jamidht/jamiaccount_config.h` is literally `"RING"`, kept for on-disk config compatibility

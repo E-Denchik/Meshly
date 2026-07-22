@@ -23,6 +23,7 @@ package org.meshly.app.daemon
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import net.jami.daemon.Blob
 import net.jami.daemon.JamiService
 import net.jami.daemon.StringMap
 import net.jami.daemon.VectMap
@@ -149,4 +150,70 @@ object RealJamiBridge {
 
     fun toggleMute(accountId: String, callId: String, muted: Boolean): Boolean =
         JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO", muted)
+
+    // --- Contacts -----------------------------------------------------------------------------
+    // All calls below come from configurationmanager.i's "/* Contacts */" and "/* trust
+    // requests */" sections. Two distinct concepts, don't conflate them: a "contact" only
+    // exists once a trust request has been accepted (or the peer accepted ours); an incoming
+    // trust request is not yet a contact and needs acceptTrustRequest/discardTrustRequest before
+    // it shows up in getContacts.
+
+    /**
+     * Directly adds `uri` as a contact and sends it a trust request in one step — this is the
+     * "add by Jami ID / username" action, matching `addContact(accountId, uri)`. libjami sends
+     * the actual DHT trust-request message on its own; there's no separate call needed for the
+     * common case (an empty-payload `sendTrustRequest` is only for re-sending/retrying).
+     */
+    fun addContact(accountId: String, uri: String) {
+        JamiService.addContact(accountId, uri)
+    }
+
+    /** `ban=true` also blocks future requests from this URI; `false` is a plain removal. */
+    fun removeContact(accountId: String, uri: String, ban: Boolean) {
+        JamiService.removeContact(accountId, uri, ban)
+    }
+
+    /**
+     * Confirmed contacts (the JNI-exposed `getContacts(accountId)` takes no `includeRemoved`
+     * flag — that's only a parameter on the internal `JamiAccount::getContacts`, not on the
+     * SWIG-bound one in configurationmanager.i).
+     *
+     * Reads `VectMap` via `size()`/`get(i)` rather than a Kotlin `Iterable` extension like `.map`
+     * — whether the real SWIG-generated `VectMap` implements `java.lang.Iterable` wasn't
+     * confirmed against a real generated build (see PHASE2_BUILD.md), but `size()`/`get(Int)` are
+     * guaranteed by SWIG's std::vector wrapper regardless of version/config.
+     */
+    fun getContacts(accountId: String): List<RealContact> {
+        val raw = JamiService.getContacts(accountId)
+        return (0 until raw.size()).map { RealContact.fromStringMap(raw[it]) }
+    }
+
+    fun getContactDetails(accountId: String, uri: String): RealContact =
+        RealContact.fromStringMap(JamiService.getContactDetails(accountId, uri))
+
+    /** Pending incoming friend requests — the "Requests" tab. Maps to `getTrustRequests`. */
+    fun getTrustRequests(accountId: String): List<RealTrustRequest> {
+        val raw = JamiService.getTrustRequests(accountId)
+        return (0 until raw.size()).map { RealTrustRequest.fromStringMap(raw[it]) }
+    }
+
+    /**
+     * Accepts an incoming trust request, turning it into a confirmed contact. Maps to
+     * `acceptTrustRequest(accountId, from)`.
+     */
+    fun acceptTrustRequest(accountId: String, fromUri: String): Boolean =
+        JamiService.acceptTrustRequest(accountId, fromUri)
+
+    /** Rejects an incoming trust request without banning the sender. */
+    fun discardTrustRequest(accountId: String, fromUri: String): Boolean =
+        JamiService.discardTrustRequest(accountId, fromUri)
+
+    /**
+     * Sends (or re-sends) a trust request to `toUri`. `payload` is an optional VCard-style
+     * profile blob attached to the request; libjami accepts an empty one (profiles can also be
+     * exchanged in-band after the request is accepted), which is what an empty [Blob] means here.
+     */
+    fun sendTrustRequest(accountId: String, toUri: String, payload: Blob = Blob()) {
+        JamiService.sendTrustRequest(accountId, toUri, payload)
+    }
 }
