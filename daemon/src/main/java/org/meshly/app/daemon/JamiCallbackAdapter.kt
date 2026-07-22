@@ -36,9 +36,11 @@ import net.jami.daemon.Callback
 import net.jami.daemon.ConfigurationCallback
 import net.jami.daemon.ConversationCallback
 import net.jami.daemon.DataTransferCallback
+import net.jami.daemon.IntVect
 import net.jami.daemon.NetworkServiceCallback
 import net.jami.daemon.PresenceCallback
 import net.jami.daemon.StringMap
+import net.jami.daemon.UintVect
 import net.jami.daemon.VectMap
 import net.jami.daemon.VideoCallback
 
@@ -212,9 +214,60 @@ internal class MeshlyDataTransferCallback(
     }
 }
 
-// The remaining three director interfaces (Video, Conversation, NetworkService) are required
+/**
+ * Bridges libjami's [VideoCallback] into [RealJamiEvent] -- except `getCameraInfo`, which is
+ * answered synchronously via [RealJamiBridge.cameraProvider] instead of the event flow (see
+ * RealVideoDevice.kt's doc for why).
+ *
+ * `formats`/`sizes`/`rates` are assumed `IntVect`/`UintVect` (the `%template`s jni_interface.i
+ * declares for `vector<int32_t>`/`vector<uint32_t>`), filled the same index/size/`add()` way as
+ * `VectMap`/`StringVect` elsewhere in this codebase -- not confirmed against a real generated
+ * build, since `getCameraInfo`'s director signature (`std::vector<int> *`, a raw pointer, not the
+ * `int32_t`/`uint32_t` vector aliases used by those templates) is the one place in the whole API
+ * surface this scaffolding pass couldn't cross-check as confidently as everything else.
+ */
+internal class MeshlyVideoCallback(
+    private val events: MutableSharedFlow<RealJamiEvent>
+) : VideoCallback() {
+
+    override fun getCameraInfo(device: String, formats: IntVect, sizes: UintVect, rates: UintVect) {
+        val info = RealJamiBridge.cameraProvider.getCameraInfo(device)
+        info.formats.forEach { formats.add(it) }
+        info.sizes.forEach { sizes.add(it) }
+        info.rates.forEach { rates.add(it) }
+    }
+
+    override fun setParameters(device: String, format: Int, width: Int, height: Int, rate: Int) {
+        events.tryEmit(RealJamiEvent.VideoSetParameters(device, format, width, height, rate))
+    }
+
+    override fun setBitrate(device: String, bitrate: Int) {
+        events.tryEmit(RealJamiEvent.VideoSetBitrate(device, bitrate))
+    }
+
+    override fun requestKeyFrame(camid: String) {
+        events.tryEmit(RealJamiEvent.VideoRequestKeyFrame(camid))
+    }
+
+    override fun startCapture(camid: String) {
+        events.tryEmit(RealJamiEvent.VideoStartCapture(camid))
+    }
+
+    override fun stopCapture(camid: String) {
+        events.tryEmit(RealJamiEvent.VideoStopCapture(camid))
+    }
+
+    override fun decodingStarted(id: String, shmPath: String, w: Int, h: Int, isMixer: Boolean) {
+        events.tryEmit(RealJamiEvent.VideoDecodingStarted(id, shmPath, w, h, isMixer))
+    }
+
+    override fun decodingStopped(id: String, shmPath: String, isMixer: Boolean) {
+        events.tryEmit(RealJamiEvent.VideoDecodingStopped(id, shmPath, isMixer))
+    }
+}
+
+// The remaining two director interfaces (Conversation, NetworkService) are required
 // arguments to JamiService.init(...) but Meshly doesn't consume their signals yet. Empty
 // subclasses are enough since every method in the upstream .i files has a default no-op body.
-internal class MeshlyVideoCallback : VideoCallback()
 internal class MeshlyConversationCallback : ConversationCallback()
 internal class MeshlyNetworkServiceCallback : NetworkServiceCallback()

@@ -170,4 +170,44 @@ sealed class RealJamiEvent {
         val fileId: String,
         val eventCode: RealDataTransferEventCode
     ) : RealJamiEvent()
+
+    // --- Video (VideoCallback) ------------------------------------------------------------------
+    // From videomanager.i. NOTE: `getCameraInfo` is NOT here — see RealVideoDevice.kt's doc for
+    // why it can't be a fire-and-forget SharedFlow event like everything else in this file.
+
+    /** Daemon picked capture parameters for `device` (after negotiating with the peer). */
+    data class VideoSetParameters(
+        val device: String,
+        val format: Int,
+        val width: Int,
+        val height: Int,
+        val rate: Int
+    ) : RealJamiEvent()
+
+    /** Daemon wants the encoder's target bitrate changed (adaptive bitrate). */
+    data class VideoSetBitrate(val device: String, val bitrate: Int) : RealJamiEvent()
+
+    /** Daemon needs a fresh keyframe pushed (e.g. after packet loss). */
+    data class VideoRequestKeyFrame(val camId: String) : RealJamiEvent()
+
+    /**
+     * Daemon wants the app to start pushing frames for `camId` via `JamiServiceJNI.
+     * captureVideoFrame`/`captureVideoPacket` (see PHASE2_BUILD.md — those are raw `%native` JNI
+     * methods on `JamiServiceJNI`, not `JamiService`). Actually doing that needs real Android
+     * camera capture code (CameraX/Camera2), out of scope for this pass.
+     */
+    data class VideoStartCapture(val camId: String) : RealJamiEvent()
+
+    data class VideoStopCapture(val camId: String) : RealJamiEvent()
+
+    /** A decoded remote/local video stream became available at `shmPath`, size `width`x`height`. */
+    data class VideoDecodingStarted(
+        val id: String,
+        val shmPath: String,
+        val width: Int,
+        val height: Int,
+        val isMixer: Boolean
+    ) : RealJamiEvent()
+
+    data class VideoDecodingStopped(val id: String, val shmPath: String, val isMixer: Boolean) : RealJamiEvent()
 }

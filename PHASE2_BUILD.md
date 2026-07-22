@@ -40,9 +40,19 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     answerMediaChangeRequest/addContact/removeContact/getContacts/getContactDetails/
     getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest/publish/
     subscribeBuddy/getSubscriptions/setSubscriptions/sendFile/downloadFile/
-    cancelDataTransfer/fileTransferInfo`), matching `net.jami.daemon.JamiService`'s real API
-    surface as found in `native/upstream/jami-daemon/bin/jni/*.i`. Includes
-    `getJamiId`/`getRegisteredName` convenience wrappers over the raw details maps.
+    cancelDataTransfer/fileTransferInfo/setDefaultDevice/getDefaultDevice/addVideoDevice/
+    removeVideoDevice/setDeviceOrientation/getSettings/applySettings/
+    getDecodingAccelerated/setDecodingAccelerated/getEncodingAccelerated/
+    setEncodingAccelerated/startAudioDevice/stopAudioDevice/openVideoInput/closeVideoInput/
+    startLocalMediaRecorder/stopLocalRecorder`), matching `net.jami.daemon.JamiService`'s real
+    API surface as found in `native/upstream/jami-daemon/bin/jni/*.i`. Includes
+    `getJamiId`/`getRegisteredName` convenience wrappers over the raw details maps, and a
+    `cameraProvider` hook for `VideoCallback.getCameraInfo` (see `RealVideoDevice.kt` below).
+    Deliberately NOT wrapped: `registerSinkTarget` and the Surface-rendering / camera-capture
+    natives (`acquireNativeWindow`, `registerVideoCallback`, `captureVideoFrame`, ...) which live
+    on `net.jami.daemon.JamiServiceJNI`, a different generated class, and need real Android
+    Surface/CameraX integration to mean anything — see the comment block in `RealJamiBridge.kt`'s
+    video section for the full list and why.
   - `RealContact.kt` — `RealContact`/`RealTrustRequest` value types mapping the raw
     `StringMap`s `getContacts`/`getContactDetails`/`getTrustRequests` return, keyed exactly as
     `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
@@ -59,14 +69,19 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     `RealFileTransferInfo`, matching `libjami::DataTransferEventCode`/`DataTransferError`
     (src/jami/datatransfer_interface.h) exactly (note `DataTransferEventCode` starts at
     `invalid = 0`, `created = 1`, not `created = 0`).
+  - `RealVideoDevice.kt` — `RealCameraInfo`/`RealCameraProvider`: `VideoCallback.getCameraInfo`
+    is the one signal in the whole API that's architecturally different from every other
+    callback here -- it's a synchronous "fill these out-collections" call, not a fire-and-forget
+    signal, so it can't be modeled as a `RealJamiEvent`. Answered via `RealJamiBridge.
+    cameraProvider` (defaults to empty capability lists) instead.
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about (registration
     state, incoming call/message, new/hold/mute/media-negotiation call signals, contact
     added/removed, trust requests, name registration result, composing/typing indicator, buddy
-    presence, file transfer progress).
-  - `JamiCallbackAdapter.kt` — subclasses of all 7 real SWIG director callback classes
-    (`Callback`, `ConfigurationCallback`, `PresenceCallback`, `DataTransferCallback` forward into
-    `RealJamiEvent`; `VideoCallback`/`ConversationCallback`/`NetworkServiceCallback` are still
-    empty no-op stubs since Meshly doesn't consume those signals yet).
+    presence, file transfer progress, video capture/decoding signals).
+  - `JamiCallbackAdapter.kt` — subclasses of all 5 SWIG director callback classes Meshly consumes
+    (`Callback`, `ConfigurationCallback`, `PresenceCallback`, `DataTransferCallback`,
+    `VideoCallback` forward into `RealJamiEvent`; `ConversationCallback`/`NetworkServiceCallback`
+    are still empty no-op stubs since Meshly doesn't consume those signals yet).
 
 None of this compiles right now — `net.jami.daemon.*` (JamiServiceJNI, Callback,
 ConfigurationCallback, ...) only exists after `bin/jni/make-swig.sh` actually runs, which only
@@ -93,6 +108,12 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
 - `registerName`'s `scheme`/`password` parameters — `RealJamiBridge.registerName` passes empty
   strings for both, which is assumed fine for the default Jami name server but hasn't been
   confirmed against a real running daemon
+- `VideoCallback.getCameraInfo`'s director signature (`std::vector<int> *formats,
+  std::vector<unsigned> *sizes, std::vector<unsigned> *rates` — raw out-pointers, not the
+  `int32_t`/`uint32_t` vector aliases `IntVect`/`UintVect` are templated from) is the one place
+  in the whole API surface this pass couldn't cross-check as confidently as everything else;
+  `MeshlyVideoCallback.getCameraInfo` assumes SWIG maps it to `IntVect`/`UintVect` params anyway,
+  filled via `.add()`
 
 ## Steps to actually build (once you have the resources)
 
@@ -179,6 +200,11 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Legacy SIP presence list | `JamiService.getSubscriptions`/`setSubscriptions(accountId, ...)` — keys `Buddy`/`Status`/`LineStatus`, values incl. `Online`/`Offline` (`libjami::Presence::*_KEY`, presence_const.h) — not the signal to use for a Jami-only account, see `RealPresence.kt` |
 | Send/receive a file | `JamiService.sendFile(accountId, conversationId, path, displayName, replyTo)` / `downloadFile(...)`; progress via `DataTransferCallback.dataTransferEvent(..., eventCode)` — `eventCode` is `libjami::DataTransferEventCode` (datatransfer_interface.h): invalid=0, created=1, unsupported=2, wait_peer_acceptance=3, wait_host_acceptance=4, ongoing=5, finished=6, closed_by_host=7, closed_by_peer=8, invalid_pathname=9, unjoinable_peer=10, timeout_expired=11 |
 | Cancel / query a file transfer | `JamiService.cancelDataTransfer(accountId, conversationId, fileId)` / `fileTransferInfo(...)` — both return `libjami::DataTransferError`: success=0, unknown=1, io=2, invalid_argument=3 |
+| Camera capability query | `Callback.getCameraInfo(device, formats, sizes, rates)` — synchronous out-param fill, answered via `RealJamiBridge.cameraProvider`, NOT a `RealJamiEvent` (see `RealVideoDevice.kt`) |
+| Video capture/decode signals | `VideoCallback.setParameters`/`setBitrate`/`requestKeyFrame`/`startCapture`/`stopCapture`/`decodingStarted`/`decodingStopped` — all fire-and-forget, forwarded to `RealJamiEvent` normally |
+| Video device management | `JamiService.setDefaultDevice`/`getDefaultDevice`/`addVideoDevice`/`removeVideoDevice`/`setDeviceOrientation`/`getSettings`/`applySettings`/`get`/`setDecodingAccelerated`/`get`/`setEncodingAccelerated`/`startAudioDevice`/`stopAudioDevice`/`openVideoInput`/`closeVideoInput`/`startLocalMediaRecorder`/`stopLocalRecorder` (all videomanager.i, `namespace libjami`) |
+| Rendering a video stream to a Surface | NOT `JamiService.registerSinkTarget` (its `SinkTarget` param isn't SWIG-callable from Java) — instead `net.jami.daemon.JamiServiceJNI.acquireNativeWindow`/`setNativeWindowGeometry`/`registerVideoCallback`/`unregisterVideoCallback`/`releaseNativeWindow`, hand-written JNI natives in videomanager.i, on a different generated class than `JamiService`. Needs a real `Surface` from the UI layer; out of scope for this pass. |
+| Feeding camera frames in | `net.jami.daemon.JamiServiceJNI.captureVideoFrame`/`captureVideoPacket`, called from real Android camera capture code (CameraX/Camera2) in response to `VideoCallback.startCapture`; out of scope for this pass |
 
 `"RING"` as the account type string is real and current (`JamiAccount::ACCOUNT_TYPE_JAMI` in
 `src/jamidht/jamiaccount_config.h` is literally `"RING"`, kept for on-disk config compatibility

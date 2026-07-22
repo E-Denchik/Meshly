@@ -49,6 +49,14 @@ object RealJamiBridge {
 
     private var started = false
 
+    /**
+     * Answers `VideoCallback.getCameraInfo` synchronously (see RealVideoDevice.kt's doc for why
+     * this can't just be another `RealJamiEvent`). Defaults to returning empty capability lists
+     * -- a legitimate answer meaning "no camera info available" -- until real Android camera
+     * code (CameraX/Camera2, out of scope for this pass) sets this to something real.
+     */
+    var cameraProvider: RealCameraProvider = RealCameraProvider { RealCameraInfo() }
+
     init {
         // Real .so name: CMakeLists.txt names the JNI target "${PROJECT_NAME}-jni" and
         // project(jami-core ...) sets PROJECT_NAME=jami-core, so the artifact is
@@ -72,7 +80,7 @@ object RealJamiBridge {
             MeshlyCallCallback(_events),
             MeshlyPresenceCallback(_events),
             MeshlyDataTransferCallback(_events),
-            MeshlyVideoCallback(),
+            MeshlyVideoCallback(_events),
             MeshlyConversationCallback(),
             MeshlyNetworkServiceCallback()
         )
@@ -332,6 +340,66 @@ object RealJamiBridge {
         val errorCode = JamiService.fileTransferInfo(accountId, conversationId, fileId, pathOut, totalOut, progressOut)
         return RealFileTransferInfo(RealDataTransferError.fromWireValue(errorCode), pathOut[0], totalOut[0], progressOut[0])
     }
+
+    // --- Video / media streams --------------------------------------------------------------------
+    // From videomanager.i's `namespace libjami` block -- device management and the Surface
+    // rendering pipeline. NOT here: actual camera capture (feeding frames in) needs real Android
+    // CameraX/Camera2 code, out of scope for this pass -- see RealVideoDevice.kt's doc and
+    // [cameraProvider]. What IS here is everything needed to point a rendered video stream at an
+    // Android Surface, and to manage which camera/input is active.
+
+    fun setDefaultDevice(name: String) = JamiService.setDefaultDevice(name)
+
+    fun getDefaultDevice(): String = JamiService.getDefaultDevice()
+
+    fun addVideoDevice(node: String) = JamiService.addVideoDevice(node)
+
+    fun removeVideoDevice(node: String) = JamiService.removeVideoDevice(node)
+
+    /** `angle` is degrees (0/90/180/270), used to compensate for physical device rotation. */
+    fun setDeviceOrientation(name: String, angle: Int) = JamiService.setDeviceOrientation(name, angle)
+
+    /** Generic device settings bag (resolution/rate/etc.) -- key names not enumerated in this pass. */
+    fun getSettings(name: String): StringMap = JamiService.getSettings(name)
+
+    fun applySettings(name: String, settings: StringMap) = JamiService.applySettings(name, settings)
+
+    fun getDecodingAccelerated(): Boolean = JamiService.getDecodingAccelerated()
+
+    fun setDecodingAccelerated(state: Boolean) = JamiService.setDecodingAccelerated(state)
+
+    fun getEncodingAccelerated(): Boolean = JamiService.getEncodingAccelerated()
+
+    fun setEncodingAccelerated(state: Boolean) = JamiService.setEncodingAccelerated(state)
+
+    fun startAudioDevice() = JamiService.startAudioDevice()
+
+    fun stopAudioDevice() = JamiService.stopAudioDevice()
+
+    /** Opens a file/URL as a video input (e.g. playing a video file into a call). Returns its input id. */
+    fun openVideoInput(path: String): String = JamiService.openVideoInput(path)
+
+    fun closeVideoInput(id: String): Boolean = JamiService.closeVideoInput(id)
+
+    fun startLocalMediaRecorder(videoInputId: String, filepath: String): String =
+        JamiService.startLocalMediaRecorder(videoInputId, filepath)
+
+    fun stopLocalRecorder(filepath: String) = JamiService.stopLocalRecorder(filepath)
+
+    // Deliberately NOT wrapped here: `registerSinkTarget(sinkId, target)` itself. `target` is a
+    // `libjami::SinkTarget` (native pull/push function pointers bound to an `ANativeWindow*`),
+    // which isn't SWIG-wrapped as a callable-from-Java type at all -- it's only ever constructed
+    // from C++ inside videomanager.i's own embedded JNI natives. An Android app doesn't call
+    // `JamiService.registerSinkTarget` directly; it calls the `%native`-declared statics on
+    // **`net.jami.daemon.JamiServiceJNI`** (a different generated class than `JamiService`) that
+    // videomanager.i implements by hand: `acquireNativeWindow(Surface)`,
+    // `setNativeWindowGeometry(window, w, h)`, `registerVideoCallback(sinkId, window)` /
+    // `unregisterVideoCallback(sinkId, window)`, and `releaseNativeWindow(window)`. `sinkId` is a
+    // call's local/remote video stream id, delivered via `VideoDecodingStarted`/`decodingStarted`'s
+    // `id`. None of those are wrapped in RealJamiBridge -- they take a raw `jlong` native window
+    // handle obtained from an actual `android.view.Surface`, which needs a real Compose/View
+    // `SurfaceView`/`TextureView` on the UI side to mean anything, out of scope for this
+    // JNI-contract pass, same as camera capture.
 
     // --- Contacts -----------------------------------------------------------------------------
     // All calls below come from configurationmanager.i's "/* Contacts */" and "/* trust
