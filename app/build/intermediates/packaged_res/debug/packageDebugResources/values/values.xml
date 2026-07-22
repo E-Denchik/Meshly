@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Meshly</string>
+    <string name="notification_channel_call_desc">Active audio and video call notifications</string>
+    <string name="notification_channel_call_name">Meshly Calls</string>
+    <string name="notification_channel_daemon_desc">Maintains decentralized P2P network presence</string>
+    <string name="notification_channel_daemon_name">Meshly P2P Connection</string>
+    <style name="Theme.Meshly" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>

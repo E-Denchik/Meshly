@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.meshly.app.core.JamiBridgeTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-07-22T13:50:57" hostname="kali" time="0.098">
+  <properties/>
+  <testcase name="toggleMute toggleCamera and flipCamera flip the active call flags" classname="org.meshly.app.core.JamiBridgeTest" time="0.068"/>
+  <testcase name="sendTextMessage maps to an outgoing sent message" classname="org.meshly.app.core.JamiBridgeTest" time="0.001"/>
+  <testcase name="native engine is unavailable in the JVM unit test sandbox" classname="org.meshly.app.core.JamiBridgeTest" time="0.0"/>
+  <testcase name="hangUpCall clears the active call" classname="org.meshly.app.core.JamiBridgeTest" time="0.003"/>
+  <testcase name="placeCall then acceptCall transitions the active call to connected" classname="org.meshly.app.core.JamiBridgeTest" time="0.002"/>
+  <testcase name="createAccount without a username is not registered on the name server" classname="org.meshly.app.core.JamiBridgeTest" time="0.022"/>
+  <testcase name="createAccount with a username produces a jami id and registers the name" classname="org.meshly.app.core.JamiBridgeTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

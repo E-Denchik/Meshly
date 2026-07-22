@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "org.meshly.app-release-54:/drawable_ic_notification.xml.flat",
+        "source": "org.meshly.app-main-55:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "org.meshly.app-release-54:/drawable_ic_launcher_round.xml.flat",
+        "source": "org.meshly.app-main-55:/drawable/ic_launcher_round.xml"
+    },
+    {
+        "merged": "org.meshly.app-release-54:/xml_data_extraction_rules.xml.flat",
+        "source": "org.meshly.app-main-55:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "org.meshly.app-release-54:/drawable_ic_launcher.xml.flat",
+        "source": "org.meshly.app-main-55:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "org.meshly.app-release-54:/xml_backup_rules.xml.flat",
+        "source": "org.meshly.app-main-55:/xml/backup_rules.xml"
+    }
+]

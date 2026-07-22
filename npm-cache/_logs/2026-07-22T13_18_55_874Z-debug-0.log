@@ -1,0 +1,90 @@
+0 verbose cli /home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/node /run/user/1000/fnm_multishells/62883_1784726281196/bin/npm
+1 info using npm@11.11.1
+2 info using node@v20.19.2
+3 silly config load:file:/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/lib/node_modules/npm/npmrc
+4 silly config load:file:/home/kali/.npmrc
+5 silly config load:file:/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/etc/npmrc
+6 verbose title npm install npm@11.18.0
+7 verbose argv "install" "--global" "npm@11.18.0"
+8 verbose logfile logs-max:10 dir:/home/kali/AndroidStudioProjects/Meshly/npm-cache/_logs/2026-07-22T13_18_55_874Z-
+9 verbose logfile /home/kali/AndroidStudioProjects/Meshly/npm-cache/_logs/2026-07-22T13_18_55_874Z-debug-0.log
+10 silly logfile done cleaning log files
+11 http fetch GET 200 https://registry.yarnpkg.com/npm 267ms (cache miss)
+12 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+13 silly idealTree buildDeps
+14 silly fetch manifest npm@11.18.0
+15 silly packumentCache full:https://registry.yarnpkg.com/npm cache-miss
+16 http fetch GET 200 https://registry.yarnpkg.com/npm 1794ms (cache miss)
+17 silly packumentCache full:https://registry.yarnpkg.com/npm set size:undefined disposed:false
+18 silly placeDep ROOT npm@11.18.0 OK for:  want: 11.18.0
+19 silly reify mark retired [
+19 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/lib/node_modules/npm',
+19 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/npm',
+19 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/npx'
+19 silly reify ]
+20 silly reify moves {
+20 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/lib/node_modules/npm': '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/lib/node_modules/.npm-qvAbxp93',
+20 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/npm': '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/.npm-9umgP5Ab',
+20 silly reify   '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/npx': '/home/kali/.local/share/fnm/node-versions/v20.19.2/installation/bin/.npx-PMcrP3uK'
+20 silly reify }
+21 http cache npm@https://registry.yarnpkg.com/npm/-/npm-11.18.0.tgz 1ms (cache hit)
+22 silly tarball no local data for npm@https://registry.yarnpkg.com/npm/-/npm-11.18.0.tgz. Extracting by manifest.
+23 http fetch GET 200 https://registry.yarnpkg.com/npm/-/npm-11.18.0.tgz 742ms (cache miss)
+24 silly CHANGE node_modules/npm
+25 silly CHANGE node_modules/npm/node_modules/tinyglobby
+26 silly CHANGE node_modules/npm/node_modules/tinyglobby/node_modules/picomatch
+27 silly CHANGE node_modules/npm/node_modules/@sigstore/verify
+28 silly CHANGE node_modules/npm/node_modules/@sigstore/tuf
+29 silly CHANGE node_modules/npm/node_modules/@sigstore/sign
+30 silly CHANGE node_modules/npm/node_modules/@sigstore/protobuf-specs
+31 silly CHANGE node_modules/npm/node_modules/@sigstore/core
+32 silly CHANGE node_modules/npm/node_modules/@npmcli/installed-package-contents
+33 silly CHANGE node_modules/npm/node_modules/@npmcli/config
+34 silly CHANGE node_modules/npm/node_modules/@npmcli/arborist
+35 silly CHANGE node_modules/npm/node_modules/@npmcli/agent
+36 silly CHANGE node_modules/npm/node_modules/@gar/promise-retry
+37 silly REMOVE node_modules/npm/node_modules/@gar/promise-retry/node_modules/retry
+38 silly CHANGE node_modules/npm/node_modules/which
+39 silly REMOVE node_modules/npm/node_modules/unique-slug
+40 silly REMOVE node_modules/npm/node_modules/unique-filename
+41 silly CHANGE node_modules/npm/node_modules/qrcode-terminal
+42 silly CHANGE node_modules/npm/node_modules/tar
+43 silly CHANGE node_modules/npm/node_modules/npm-profile
+44 silly CHANGE node_modules/npm/node_modules/socks
+45 silly CHANGE node_modules/npm/node_modules/sigstore
+46 silly CHANGE node_modules/npm/node_modules/semver
+47 silly REMOVE node_modules/npm/node_modules/retry
+48 silly REMOVE node_modules/npm/node_modules/promise-retry
+49 silly CHANGE node_modules/npm/node_modules/postcss-selector-parser
+50 silly CHANGE node_modules/npm/node_modules/pacote
+51 silly CHANGE node_modules/npm/node_modules/libnpmpack
+52 silly CHANGE node_modules/npm/node_modules/nopt
+53 silly CHANGE node_modules/npm/node_modules/node-gyp
+54 silly CHANGE node_modules/npm/node_modules/libnpmpublish
+55 silly CHANGE node_modules/npm/node_modules/minipass-flush
+56 silly REMOVE node_modules/npm/node_modules/minipass-flush/node_modules/yallist
+57 silly REMOVE node_modules/npm/node_modules/minipass-flush/node_modules/minipass
+58 silly CHANGE node_modules/npm/node_modules/minimatch
+59 silly CHANGE node_modules/npm/node_modules/libnpmversion
+60 silly CHANGE node_modules/npm/node_modules/make-fetch-happen
+61 silly CHANGE node_modules/npm/node_modules/lru-cache
+62 silly CHANGE node_modules/npm/node_modules/libnpmexec
+63 silly CHANGE node_modules/npm/node_modules/libnpmdiff
+64 silly CHANGE node_modules/npm/node_modules/is-cidr
+65 silly CHANGE node_modules/npm/node_modules/libnpmfund
+66 silly CHANGE node_modules/npm/node_modules/diff
+67 silly CHANGE node_modules/npm/node_modules/cidr-regex
+68 silly CHANGE node_modules/npm/node_modules/ip-address
+69 silly REMOVE node_modules/npm/node_modules/imurmurhash
+70 silly CHANGE node_modules/npm/node_modules/hosted-git-info
+71 silly REMOVE node_modules/npm/node_modules/err-code
+72 silly CHANGE node_modules/npm/node_modules/cssesc
+73 silly CHANGE node_modules/npm/node_modules/cacache
+74 silly CHANGE node_modules/npm/node_modules/brace-expansion
+75 silly CHANGE node_modules/npm/node_modules/bin-links
+76 verbose cwd /home/kali/AndroidStudioProjects/Meshly
+77 verbose os Linux 7.0.12+kali-amd64
+78 verbose node v20.19.2
+79 verbose npm  v11.11.1
+80 verbose exit 0
+81 info ok
