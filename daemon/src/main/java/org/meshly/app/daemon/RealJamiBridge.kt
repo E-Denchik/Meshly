@@ -39,6 +39,10 @@ import net.jami.daemon.VectMap
  */
 object RealJamiBridge {
 
+    // libjami::Account::MessageStates::DISPLAYED (src/jami/account_const.h) — see
+    // setMessageDisplayed's doc below for the full enum and why there's no DELIVERED value.
+    private const val MESSAGE_STATE_DISPLAYED = 3
+
     private val _events = MutableSharedFlow<RealJamiEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<RealJamiEvent> = _events.asSharedFlow()
 
@@ -91,9 +95,8 @@ object RealJamiBridge {
      * (Jami name server) is a separate async call, `registerName(accountId, name, scheme,
      * password)`, not part of account creation itself.
      *
-     * Returns the daemon's internal accountId (NOT the Jami ID / public key hash — that lives
-     * inside the account's volatile/details map once registered, under a key this scaffolding
-     * hasn't confirmed yet against a real running daemon).
+     * Returns the daemon's internal accountId (NOT the Jami ID / public key hash — use
+     * [getJamiId] for that).
      */
     fun createAccount(displayName: String?): String {
         val details: StringMap = JamiService.getAccountTemplate("RING")
@@ -160,27 +163,69 @@ object RealJamiBridge {
     }
 
     /**
+     * Maps to `getLastMessages(accountId, base_timestamp)` (configurationmanager.i), returning
+     * every message the daemon has recorded for this account since `baseTimestampMs`. Pass 0 to
+     * fetch full history. `libjami::Message` is wrapped via `RealChatMessage`.
+     */
+    fun getLastMessages(accountId: String, baseTimestampMs: Long): List<RealChatMessage> {
+        val raw = JamiService.getLastMessages(accountId, baseTimestampMs)
+        return (0 until raw.size()).map { RealChatMessage.fromMessage(raw[it]) }
+    }
+
+    /**
+     * Reports this account's typing state to a peer/conversation. Maps to
+     * `setIsComposing(accountId, conversationUri, isWriting)`.
+     */
+    fun setIsComposing(accountId: String, conversationUri: String, isWriting: Boolean) {
+        JamiService.setIsComposing(accountId, conversationUri, isWriting)
+    }
+
+    /**
+     * Marks a message as read/displayed, which also sends a read receipt to the peer. Maps to
+     * `setMessageDisplayed(accountId, conversationUri, messageId, status)`. `status` is
+     * `libjami::Account::MessageStates` (src/jami/account_const.h): UNKNOWN=0, SENDING=1,
+     * SENT=2, DISPLAYED=3, FAILURE=4, CANCELLED=5 — note there is no separate "delivered" state
+     * at this level, only sent/displayed, unlike Meshly's Phase 1 mock `MessageStatus` enum
+     * (SENDING/SENT/DELIVERED/READ/FAILED); expect to collapse DELIVERED and READ onto
+     * DISPLAYED=3 when wiring this up for real.
+     */
+    fun setMessageDisplayed(accountId: String, conversationUri: String, messageId: String): Boolean =
+        JamiService.setMessageDisplayed(accountId, conversationUri, messageId, MESSAGE_STATE_DISPLAYED)
+
+    /**
+     * Looks up a message's delivery state by its numeric id (the value [sendTextMessage]
+     * returns). Maps to the accountId-scoped overload of `getMessageStatus`.
+     *
+     * CAUTION: `sendAccountTextMessage`'s numeric return id and the string `messageId` used by
+     * `incomingAccountMessage`/`accountMessageStatusChanged`/`setMessageDisplayed` are not
+     * confirmed to be the same identifier space — this hasn't been checked against a real
+     * running daemon. Don't assume you can feed one into the other's API without verifying first.
+     */
+    fun getMessageStatus(accountId: String, messageId: Long): Int =
+        JamiService.getMessageStatus(accountId, messageId)
+
+    /**
      * Maps to `placeCallWithMedia(accountId, to, mediaList)` (callmanager.i). Media attribute
      * keys (MEDIA_TYPE/ENABLED/MUTED/SOURCE/LABEL) come from src/jami/media_const.h's
      * MediaAttributeKey/MediaAttributeValue namespaces.
      */
     fun placeCall(accountId: String, toUri: String, withVideo: Boolean): String {
         val audioMedia = StringMap().apply {
-            set("MEDIA_TYPE", "MEDIA_TYPE_AUDIO")
-            set("ENABLED", "true")
-            set("MUTED", "false")
-            set("SOURCE", "")
-            set("LABEL", "audio_0")
+            put("MEDIA_TYPE", "MEDIA_TYPE_AUDIO")
+            put("ENABLED", "true")
+            put("MUTED", "false")
+            put("SOURCE", "")
+            put("LABEL", "audio_0")
         }
         val mediaList = VectMap().apply { add(audioMedia) }
         if (withVideo) {
             mediaList.add(
                 StringMap().apply {
-                    set("MEDIA_TYPE", "MEDIA_TYPE_VIDEO")
-                    set("ENABLED", "true")
-                    set("MUTED", "false")
-                    set("SOURCE", "")
-                    set("LABEL", "video_0")
+                    put("MEDIA_TYPE", "MEDIA_TYPE_VIDEO")
+                    put("ENABLED", "true")
+                    put("MUTED", "false")
+                    put("SOURCE", "")
+                    put("LABEL", "video_0")
                 }
             )
         }

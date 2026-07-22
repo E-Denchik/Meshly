@@ -35,18 +35,20 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
 - `daemon/src/main/java/org/meshly/app/daemon/`:
   - `RealJamiBridge.kt` — real engine calls (`JamiService.init/fini/addAccount/getAccountList/
     getAccountDetails/getVolatileAccountDetails/registerName/sendAccountTextMessage/
-    placeCallWithMedia/accept/hangUp/muteLocalMedia/addContact/removeContact/getContacts/
-    getContactDetails/getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest`),
-    matching `net.jami.daemon.JamiService`'s real API surface as found in
+    getLastMessages/setIsComposing/setMessageDisplayed/getMessageStatus/placeCallWithMedia/
+    accept/hangUp/muteLocalMedia/addContact/removeContact/getContacts/getContactDetails/
+    getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest`), matching
+    `net.jami.daemon.JamiService`'s real API surface as found in
     `native/upstream/jami-daemon/bin/jni/*.i`. Includes `getJamiId`/`getRegisteredName`
     convenience wrappers over the raw details maps.
   - `RealContact.kt` — `RealContact`/`RealTrustRequest` value types mapping the raw
     `StringMap`s `getContacts`/`getContactDetails`/`getTrustRequests` return, keyed exactly as
     `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
     produce them.
+  - `RealChatMessage.kt` — wraps `libjami::Message` (the type `getLastMessages` returns).
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about
     (registration state, incoming call/message, contact added/removed, trust requests, name
-    registration result).
+    registration result, composing/typing indicator).
   - `JamiCallbackAdapter.kt` — subclasses of the real `Callback` / `ConfigurationCallback`
     SWIG director classes that forward into `RealJamiEvent`, plus no-op stubs for the other
     five callback interfaces `JamiService.init()` requires (Presence, DataTransfer, Video,
@@ -65,9 +67,12 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
 - `sendAccountTextMessage`'s `flag` parameter meaning (currently passing `0`)
 - `time_t received` parameter type in `ConfigurationCallback.incomingTrustRequest` — assumed
   `Long` in `JamiCallbackAdapter.kt`
-- Exact SWIG-generated method names on `StringMap`/`VectMap` (assumed `set`/`get`/`add`, matching
-  SWIG's default `std_map.i`/`std_vector.i` Java proxies — this is NOT `java.util.Map`'s
-  `put`/`containsKey`)
+- `VectMap`'s exact API: assumed index/size-based (`size()`, `get(int)`, `add(T)`) rather than a
+  `java.util.List`, based on jni_interface.i's own `toNative()` helper for `vector<map<string,
+  string>>` using that shape — but whether it also implements `java.lang.Iterable`/`List` (which
+  would additionally allow `for`/`.map{}`) isn't confirmed. `StringMap` is on firmer ground: the
+  same file's `map<string, string>` javacode block uses `entrySet()`/`put()`/`get()` directly, so
+  it's treated here as a real `java.util.Map<String, String>`, not guessed.
 - `registerName`'s `scheme`/`password` parameters — `RealJamiBridge.registerName` passes empty
   strings for both, which is assumed fine for the default Jami name server but hasn't been
   confirmed against a real running daemon
@@ -132,6 +137,10 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Registration/device state | `JamiService.getVolatileAccountDetails(accountId)` — `Account.registeredName`/`Account.registrationStatus`/`Account.deviceAnnounced` |
 | Register username | `JamiService.registerName(accountId, name, scheme, password)`, result via `ConfigurationCallback.nameRegistrationEnded` |
 | Send message | `JamiService.sendAccountTextMessage(accountId, to, StringMap("text/plain" -> body), flag)` |
+| Message history | `JamiService.getLastMessages(accountId, baseTimestampMs)` → `MessageVect` of `libjami::Message` (`from`/`payloads`/`received`) |
+| Typing indicator | `JamiService.setIsComposing(accountId, conversationUri, bool)`; incoming via `ConfigurationCallback.composingStatusChanged` |
+| Mark read / receipts | `JamiService.setMessageDisplayed(accountId, conversationUri, messageId, status)` — status is `libjami::Account::MessageStates` (UNKNOWN=0, SENDING=1, SENT=2, DISPLAYED=3, FAILURE=4, CANCELLED=5) — no separate DELIVERED |
+| Message delivery status by id | `JamiService.getMessageStatus(accountId, id)` — CAUTION: not confirmed to share an id space with the string `messageId` used elsewhere |
 | Place call | `JamiService.placeCallWithMedia(accountId, to, VectMap of StringMap media attributes)` |
 | Accept/reject/hang up | `JamiService.accept/refuse/hangUp(accountId, callId)` |
 | Mute | `JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO"/"MEDIA_TYPE_VIDEO", bool)` |

@@ -35,10 +35,11 @@ import net.jami.daemon.StringMap
  * - `confirmed` — only present (as the literal string "true") once the contact is active
  * - `banned` — only present (as the literal string "true") once the contact is banned
  *
- * NOTE: whether SWIG's generated `StringMap.get(key)` returns null or throws for a missing key
- * (relevant for `confirmed`/`banned`, which are only present conditionally) hasn't been confirmed
- * against a real generated build — see PHASE2_BUILD.md's uncertainty list. `getOrNull` below
- * assumes a Map-like `get` that returns null; adjust if the real generated class throws instead.
+ * `StringMap.get(key)` returning null for a missing key (rather than throwing — relevant for
+ * `confirmed`/`banned`, which are only present conditionally) relies on `StringMap` being a real
+ * `java.util.Map<String, String>`, which jni_interface.i's own javacode block for
+ * `map<string, string>` confirms (its `toNative()`/`toSwig()` helpers use `entrySet()`/`put()`
+ * directly) — see PHASE2_BUILD.md's uncertainty list for the full reasoning.
  */
 data class RealContact(
     val uri: String,

@@ -127,6 +127,10 @@ internal class MeshlyConfigurationCallback(
     override fun nameRegistrationEnded(accountId: String, state: Int, name: String) {
         events.tryEmit(RealJamiEvent.NameRegistrationEnded(accountId, state, name))
     }
+
+    override fun composingStatusChanged(accountId: String, convId: String, from: String, state: Int) {
+        events.tryEmit(RealJamiEvent.ComposingStatusChanged(accountId, convId, from, state))
+    }
 }
 
 // The remaining four director interfaces (Presence, DataTransfer, Video, Conversation,

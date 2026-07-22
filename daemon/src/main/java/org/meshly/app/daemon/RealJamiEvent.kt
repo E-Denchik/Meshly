@@ -79,4 +79,12 @@ sealed class RealJamiEvent {
 
     /** Async result of [RealJamiBridge.registerName]. `state` is libjami's raw int result code. */
     data class NameRegistrationEnded(val accountId: String, val state: Int, val name: String) : RealJamiEvent()
+
+    /** Peer typing indicator. `state` is 0/1 (not typing/typing) per `setIsComposing`'s bool param. */
+    data class ComposingStatusChanged(
+        val accountId: String,
+        val conversationId: String,
+        val from: String,
+        val state: Int
+    ) : RealJamiEvent()
 }
