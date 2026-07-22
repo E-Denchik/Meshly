@@ -196,12 +196,15 @@ internal class MeshlyDataTransferCallback(
     private val events: MutableSharedFlow<RealJamiEvent>
 ) : DataTransferCallback() {
 
+    // `eventCode` is `uint32_t` -- `Long`, per the widening convention documented on
+    // RealDataTransferEventCode (this project's own uint64_t->BigInteger-avoidance override is
+    // corroborating evidence SWIG's stock unsigned-widening defaults apply here).
     override fun dataTransferEvent(
         accountId: String,
         conversationId: String,
         interactionId: String,
         fileId: String,
-        eventCode: Int
+        eventCode: Long
     ) {
         events.tryEmit(
             RealJamiEvent.DataTransferEvent(
@@ -276,12 +279,13 @@ internal class MeshlyConversationCallback(
     private val events: MutableSharedFlow<RealJamiEvent>
 ) : ConversationCallback() {
 
-    override fun swarmLoaded(id: Int, accountId: String, conversationId: String, messages: SwarmMessageVect) {
+    // `id` is `uint32_t` in both methods below -- `Long`, see RealDataTransferEventCode's doc.
+    override fun swarmLoaded(id: Long, accountId: String, conversationId: String, messages: SwarmMessageVect) {
         val mapped = (0 until messages.size()).map { RealSwarmMessage.fromSwarmMessage(messages[it]) }
         events.tryEmit(RealJamiEvent.SwarmLoaded(id, accountId, conversationId, mapped))
     }
 
-    override fun messagesFound(id: Int, accountId: String, conversationId: String, messages: VectMap) {
+    override fun messagesFound(id: Long, accountId: String, conversationId: String, messages: VectMap) {
         events.tryEmit(RealJamiEvent.MessagesFound(id, accountId, conversationId, messages))
     }
 
@@ -346,7 +350,8 @@ internal class MeshlyConversationCallback(
         )
     }
 
-    override fun onConversationError(accountId: String, conversationId: String, code: Int, what: String) {
+    // `code` is `uint32_t` -- `Long`, see RealDataTransferEventCode's doc.
+    override fun onConversationError(accountId: String, conversationId: String, code: Long, what: String) {
         events.tryEmit(RealJamiEvent.ConversationError(accountId, conversationId, code, what))
     }
 
@@ -369,13 +374,15 @@ internal class MeshlyNetworkServiceCallback(
     private val events: MutableSharedFlow<RealJamiEvent>
 ) : NetworkServiceCallback() {
 
-    // `requestId` is `uint32_t` and `localPort` is `uint16_t` on the C++ side; no explicit `%apply`
-    // override for either exists in jni_interface.i (unlike uint64_t/time_t), so both are assumed
-    // to fall back to SWIG's un-overridden defaults (`int` for unsigned int, `short` for unsigned
-    // short) here as `Int` -- not confirmed against a real generated build, and `localPort` in
-    // particular could plausibly come out as `Short` instead.
+    // `requestId` is `uint32_t` (-> `Long`) and `localPort` below is `uint16_t` (-> `Int`); no
+    // explicit `%apply` override for either exists in jni_interface.i (unlike uint64_t/time_t),
+    // so both fall back to SWIG's documented default unsigned-widening rule: unsigned short ->
+    // int, unsigned int -> long, unsigned long/uint64_t -> BigInteger (this project's own
+    // `%apply int64_t { uint64_t }` override, commented "Avoid uint64_t to be converted to
+    // BigInteger", is direct evidence it follows exactly that convention). Reasonably confident,
+    // not confirmed against a real generated build.
     override fun peerServicesReceived(
-        requestId: Int,
+        requestId: Long,
         accountId: String,
         peerId: String,
         status: Int,

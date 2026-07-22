@@ -215,9 +215,13 @@ sealed class RealJamiEvent {
     // From conversation.i. See RealConversation.kt's top-level note: this, not the account-message
     // API wired earlier, is very likely the real path a 1:1 or group chat feature should use.
 
-    /** Answer to a `loadConversation`/similar request identified by `id`: the requested history page. */
+    /**
+     * Answer to a `loadConversation`/similar request identified by `id`: the requested history
+     * page. `id` is `Long` (`uint32_t` on the C++ side) -- see [RealDataTransferEventCode]'s doc
+     * for the widening convention this relies on; same for [MessagesFound.id] below.
+     */
     data class SwarmLoaded(
-        val id: Int,
+        val id: Long,
         val accountId: String,
         val conversationId: String,
         val messages: List<RealSwarmMessage>
@@ -225,7 +229,7 @@ sealed class RealJamiEvent {
 
     /** Answer to `searchConversation`, identified by `id`. Raw maps, not [RealSwarmMessage] -- see call site. */
     data class MessagesFound(
-        val id: Int,
+        val id: Long,
         val accountId: String,
         val conversationId: String,
         val messages: VectMap
@@ -279,7 +283,8 @@ sealed class RealJamiEvent {
         val event: RealConversationMemberEvent
     ) : RealJamiEvent()
 
-    data class ConversationError(val accountId: String, val conversationId: String, val code: Int, val what: String) : RealJamiEvent()
+    /** `code` is `Long` (`uint32_t`) -- see [RealDataTransferEventCode]'s doc on the widening convention. */
+    data class ConversationError(val accountId: String, val conversationId: String, val code: Long, val what: String) : RealJamiEvent()
 
     data class ConversationPreferencesUpdated(
         val accountId: String,
@@ -292,15 +297,20 @@ sealed class RealJamiEvent {
     // a DHT/ICE tunnel" feature, not central to Meshly's messaging/calling core. Wired for
     // completeness since it's part of the real JNI-exposed API either way.
 
-    /** Answer to `queryPeerServices`, identified by `requestId`. `servicesJson` is a raw JSON blob. */
+    /**
+     * Answer to `queryPeerServices`, identified by `requestId`. `servicesJson` is a raw JSON
+     * blob. `requestId` is `Long` (`uint32_t`); `status` stays `Int` (plain `int` on the C++
+     * side) -- see [RealDataTransferEventCode]'s doc on the widening convention.
+     */
     data class PeerServicesReceived(
-        val requestId: Int,
+        val requestId: Long,
         val accountId: String,
         val peerId: String,
         val status: Int,
         val servicesJson: String
     ) : RealJamiEvent()
 
+    /** `localPort` (`uint16_t`) is `Int` -- see [MeshlyNetworkServiceCallback]'s note. */
     data class ServiceTunnelOpened(val accountId: String, val tunnelId: String, val localPort: Int) : RealJamiEvent()
 
     data class ServiceTunnelClosed(val accountId: String, val tunnelId: String, val reason: String) : RealJamiEvent()

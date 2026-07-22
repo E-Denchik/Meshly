@@ -152,23 +152,37 @@ object RealJamiBridge {
      * Registers a username on the Jami name server for this account. Maps to
      * `registerName(account, name, scheme, password)` (configurationmanager.i). Result arrives
      * asynchronously via `ConfigurationCallback.nameRegistrationEnded`, not as this call's return
-     * value — `scheme`/`password` aren't used for the default Jami name server and empty strings
-     * are the norm there (not confirmed against a real running daemon).
+     * value.
+     *
+     * RESOLVED (was an open uncertainty): `scheme`/`password` are NOT name-server credentials —
+     * they're read straight through to `readArchive(scheme, password)`
+     * (src/jamidht/archive_account_manager.cpp), i.e. the password protecting the account's own
+     * local key archive, needed here because registering a name requires signing the request
+     * with the account's private key. The empty-string defaults below are correct, not a
+     * placeholder hack, for the common case: `fileutils::ARCHIVE_AUTH_SCHEME_NONE` is literally
+     * `""` (src/fileutils.h; `"password"`/`"key"` are the other two real schemes), matching
+     * `RealJamiBridge.createAccount`, which doesn't set an archive password. Thread a real
+     * `password` through here once Meshly supports password-protected accounts.
      */
-    fun registerName(accountId: String, name: String): Boolean =
-        JamiService.registerName(accountId, name, "", "")
+    fun registerName(accountId: String, name: String, password: String = "", scheme: String = ""): Boolean =
+        JamiService.registerName(accountId, name, scheme, password)
 
     /**
      * Maps to `sendAccountTextMessage(accountId, to, message, flag)` (configurationmanager.i).
      * `message` is a StringMap because Jami messages carry a MIME-type-keyed payload map
-     * (e.g. "text/plain" -> body) rather than a single string. The `flag` parameter's meaning
-     * wasn't confirmed against daemon source in this pass — passing 0 (no special flag) until
-     * verified.
+     * (e.g. "text/plain" -> body) rather than a single string.
+     *
+     * RESOLVED (was an open uncertainty): `flag` is a bitmask, not an opaque value —
+     * `src/client/configurationmanager.cpp`'s implementation reads only bit 0:
+     * `bool onlyConnected = flags & 0x1;`, then calls `Manager::sendTextMessage(..., onlyConnected)`.
+     * Bit 0 set means "only deliver if the peer is currently connected" (skip queueing for later
+     * delivery); `0` (the default here) is the normal case, matching what a chat feature wants.
      */
-    fun sendTextMessage(accountId: String, toUri: String, text: String): Long {
+    fun sendTextMessage(accountId: String, toUri: String, text: String, onlyIfConnected: Boolean = false): Long {
         val message = StringMap()
         message["text/plain"] = text
-        return JamiService.sendAccountTextMessage(accountId, toUri, message, 0)
+        val flag = if (onlyIfConnected) 0x1 else 0x0
+        return JamiService.sendAccountTextMessage(accountId, toUri, message, flag)
     }
 
     /**
@@ -526,33 +540,49 @@ object RealJamiBridge {
 
     /**
      * Sends a message into a swarm conversation -- see this section's header note on why this,
-     * not [sendTextMessage], is very likely the one a real chat feature should call. `flag`'s
-     * meaning wasn't confirmed, same caveat as [sendTextMessage]'s.
+     * not [sendTextMessage], is very likely the one a real chat feature should call.
+     *
+     * `action` selects what `message`/`commitId` mean (see [RealConversationMessageAction]'s
+     * doc, confirmed from source, not guessed): for a plain new message or reply, `commitId`
+     * should be empty or the message being replied to; for [RealConversationMessageAction.EDIT]
+     * or [RealConversationMessageAction.REACT], `commitId` must be the target message's id.
      */
-    fun sendConversationMessage(accountId: String, conversationId: String, message: String, replyTo: String = "", flag: Int = 0) {
-        JamiService.sendMessage(accountId, conversationId, message, replyTo, flag)
+    fun sendConversationMessage(
+        accountId: String,
+        conversationId: String,
+        message: String,
+        commitId: String = "",
+        action: RealConversationMessageAction = RealConversationMessageAction.SEND_OR_REPLY
+    ) {
+        JamiService.sendMessage(accountId, conversationId, message, commitId, action.wireValue)
     }
 
     /**
      * Requests a page of conversation history starting from `fromMessage` (empty string for the
      * most recent). Answer arrives async via [RealJamiEvent.SwarmLoaded], matched by the `id`
-     * this call returns. `n` is `size_t` on the C++ side -- assumed `Long` here (SWIG's common
-     * default for size_t), not confirmed against a real generated build.
+     * this call returns. Both `n` (`size_t`) and the `uint32_t` return are `Long`: `size_t` per
+     * SWIG's common default, and `uint32_t` per the widening convention documented on
+     * [RealDataTransferEventCode] (confirmed by this project's own `%apply int64_t { uint64_t }`
+     * override elsewhere, with no equivalent override needed/present for uint32_t).
      */
-    fun loadConversation(accountId: String, conversationId: String, fromMessage: String = "", n: Long = 0): Int =
+    fun loadConversation(accountId: String, conversationId: String, fromMessage: String = "", n: Long = 0): Long =
         JamiService.loadConversation(accountId, conversationId, fromMessage, n)
 
-    fun loadSwarmUntil(accountId: String, conversationId: String, fromMessage: String, toMessage: String): Int =
+    fun loadSwarmUntil(accountId: String, conversationId: String, fromMessage: String, toMessage: String): Long =
         JamiService.loadSwarmUntil(accountId, conversationId, fromMessage, toMessage)
 
-    fun countInteractions(accountId: String, conversationId: String, toId: String, fromId: String, authorUri: String): Int =
+    fun countInteractions(accountId: String, conversationId: String, toId: String, fromId: String, authorUri: String): Long =
         JamiService.countInteractions(accountId, conversationId, toId, fromId, authorUri)
 
     fun clearCache(accountId: String, conversationId: String) {
         JamiService.clearCache(accountId, conversationId)
     }
 
-    /** Answer arrives async via [RealJamiEvent.MessagesFound], matched by the `id` this call returns. */
+    /**
+     * Answer arrives async via [RealJamiEvent.MessagesFound], matched by the `id` this call
+     * returns. `maxResult` (`uint32_t`) and the return value are `Long` -- see [loadConversation]'s
+     * doc.
+     */
     fun searchConversation(
         accountId: String,
         conversationId: String,
@@ -562,9 +592,9 @@ object RealJamiBridge {
         type: String,
         after: Long,
         before: Long,
-        maxResult: Int,
+        maxResult: Long,
         flag: Int
-    ): Int = JamiService.searchConversation(
+    ): Long = JamiService.searchConversation(
         accountId, conversationId, author, lastId, regexSearch, type, after, before, maxResult, flag
     )
 
@@ -585,11 +615,19 @@ object RealJamiBridge {
         return (0 until raw.size()).map { raw[it] }
     }
 
-    /** Answer arrives async via [RealJamiEvent.PeerServicesReceived], matched by the returned request id. */
-    fun queryPeerServices(accountId: String, peerUri: String): Int = JamiService.queryPeerServices(accountId, peerUri)
+    /**
+     * Answer arrives async via [RealJamiEvent.PeerServicesReceived], matched by the returned
+     * request id. Returns `Long` (`uint32_t`) -- see [loadConversation]'s doc for the widening
+     * convention this relies on.
+     */
+    fun queryPeerServices(accountId: String, peerUri: String): Long = JamiService.queryPeerServices(accountId, peerUri)
 
-    /** `localPort` is `uint16_t` on the C++ side -- see [MeshlyNetworkServiceCallback]'s note on
-     *  why this is assumed `Int` rather than confirmed. */
+    /**
+     * `localPort` is `uint16_t` on the C++ side, taken as `Int` here: SWIG's documented default
+     * widens `unsigned short` to `int` (see [RealDataTransferEventCode]'s doc for the same
+     * widening convention one step up, `unsigned int` -> `long`) -- reasonably confident, though
+     * not confirmed against a real generated build.
+     */
     fun openServiceTunnel(
         accountId: String,
         peerUri: String,

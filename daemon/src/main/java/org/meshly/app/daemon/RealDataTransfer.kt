@@ -21,12 +21,20 @@
 package org.meshly.app.daemon
 
 /**
- * `DataTransferCallback.dataTransferEvent`'s `eventCode` int, and `fileTransferInfo`/
- * `cancelDataTransfer`'s `DataTransferError` return (SWIG-`%apply`'d to plain `uint32_t`/`int`).
+ * `DataTransferCallback.dataTransferEvent`'s `eventCode`, and `fileTransferInfo`/
+ * `cancelDataTransfer`'s `DataTransferError` return (SWIG-`%apply`'d to plain `uint32_t`).
  * Verbatim from `libjami::DataTransferEventCode` (src/jami/datatransfer_interface.h) — note the
  * daemon really does start this enum at `invalid = 0`, then `created` at 1, not "created" at 0.
+ *
+ * `wireValue`/`fromWireValue` are `Long`, not `Int`: SWIG's documented default Java typemap
+ * widens unsigned C++ types to the next larger *signed* Java primitive so the full unsigned range
+ * fits (`unsigned short` -> `int`, `unsigned int` -> `long`, `unsigned long`/`uint64_t` ->
+ * `BigInteger`) -- this project's own `%apply int64_t { uint64_t }` override in jni_interface.i,
+ * with the comment "Avoid uint64_t to be converted to BigInteger", is direct corroborating
+ * evidence it follows that exact convention. There's no equivalent override for plain `uint32_t`
+ * anywhere in the .i files, so it should fall through to the `long` default.
  */
-enum class RealDataTransferEventCode(val wireValue: Int) {
+enum class RealDataTransferEventCode(val wireValue: Long) {
     INVALID(0),
     CREATED(1),
     UNSUPPORTED(2),
@@ -41,21 +49,23 @@ enum class RealDataTransferEventCode(val wireValue: Int) {
     TIMEOUT_EXPIRED(11);
 
     companion object {
-        fun fromWireValue(value: Int): RealDataTransferEventCode =
+        fun fromWireValue(value: Long): RealDataTransferEventCode =
             entries.firstOrNull { it.wireValue == value } ?: INVALID
     }
 }
 
-/** `libjami::DataTransferError` (src/jami/datatransfer_interface.h) — `cancelDataTransfer`'s and
- *  `fileTransferInfo`'s return value. */
-enum class RealDataTransferError(val wireValue: Int) {
+/**
+ * `libjami::DataTransferError` (src/jami/datatransfer_interface.h) — `cancelDataTransfer`'s and
+ * `fileTransferInfo`'s return value. `Long`, not `Int` -- see [RealDataTransferEventCode]'s doc.
+ */
+enum class RealDataTransferError(val wireValue: Long) {
     SUCCESS(0),
     UNKNOWN(1),
     IO(2),
     INVALID_ARGUMENT(3);
 
     companion object {
-        fun fromWireValue(value: Int): RealDataTransferError =
+        fun fromWireValue(value: Long): RealDataTransferError =
             entries.firstOrNull { it.wireValue == value } ?: UNKNOWN
     }
 }
@@ -65,10 +75,11 @@ enum class RealDataTransferError(val wireValue: Int) {
  * `OUTPUT` typemapped parameters (datatransfer.i's `%apply std::string& OUTPUT { path_out }` /
  * `%apply int64_t& OUTPUT { total_out }` / `{ progress_out }`) rather than a struct — that
  * typemap pattern generates single-element-array "out parameters" on the Java side (`String[]`
- * for the path, presumably `long[]` for the two int64_t ones, mirroring the `std::string&
- * OUTPUT` typemap shown explicitly in the .i file), which is why [RealJamiBridge.fileTransferInfo]
- * has to allocate and pass those arrays in rather than just reading a return value. The exact
- * array element type for the int64_t OUTPUT params (`long[]` vs `Long[]`) isn't confirmed against
- * a real generated build.
+ * for the path, explicitly shown in the .i file's own `std::string& OUTPUT` typemap block; `long[]`
+ * for the two `int64_t` ones is SWIG's standard, well-documented `TYPE& OUTPUT` idiom for a
+ * primitive out-parameter, and `int64_t` is independently confirmed `long` here via the
+ * `%apply int64_t { uint64_t }` chain used elsewhere -- reasonably confident, if still not
+ * confirmed against an actual generated build), which is why [RealJamiBridge.fileTransferInfo]
+ * has to allocate and pass those arrays in rather than just reading a return value.
  */
 data class RealFileTransferInfo(val error: RealDataTransferError, val path: String, val totalBytes: Long, val progressBytes: Long)

@@ -119,24 +119,64 @@ happens as part of a real CMake build with `JAMI_JNI=On`. That's fine: since `da
 
 ## Known uncertainties (verify once you can actually build)
 
-These couldn't be confirmed without running SWIG for real, so they're flagged in code comments
-too — double check them against the generated `net/jami/daemon/*.java` files:
+### Resolved by reading further into the daemon source (no SWIG run needed)
 
-- `sendAccountTextMessage`'s `flag` parameter meaning (currently passing `0`)
+These were originally flagged as unconfirmed guesses; a closer read of the C++ implementation
+(not just the `.i` interface declarations) settled them:
+
+- **`sendAccountTextMessage`'s `flag`** is a bitmask: `src/client/configurationmanager.cpp` reads
+  only bit 0 (`bool onlyConnected = flags & 0x1;`) and forwards it to `Manager::sendTextMessage`.
+  `RealJamiBridge.sendTextMessage` now takes an `onlyIfConnected: Boolean` param instead of a
+  bare int.
+- **Conversation `sendMessage`'s `flag`** is a completely different, unrelated convention from
+  the one above — it's an action selector, confirmed from `src/client/conversation_interface.cpp`:
+  `0` = send/reply, `1` = edit an existing message, `2` = react to a message. Modeled as
+  `RealConversationMessageAction` (`RealConversation.kt`); `RealJamiBridge.sendConversationMessage`
+  takes it instead of a bare int.
+- **`registerName`'s `scheme`/`password`** are not name-server credentials — they're read
+  straight through to `readArchive(scheme, password)`
+  (`src/jamidht/archive_account_manager.cpp`), i.e. the password protecting the account's own
+  local key archive (registering a name requires signing the request with the account's private
+  key). The empty-string defaults are legitimately correct for the common case:
+  `fileutils::ARCHIVE_AUTH_SCHEME_NONE` is literally `""` (`src/fileutils.h` — `"password"`/`"key"`
+  are the other two real schemes), matching accounts created without an archive password.
+  `RealJamiBridge.registerName` now takes `password`/`scheme` params (still empty by default)
+  instead of hardcoding them internally.
+- **Unsigned integer widening.** SWIG's Java target has a well-documented default convention for
+  unsigned C++ types: `unsigned short` → `int`, `unsigned int` → `long`, `unsigned long`/`uint64_t`
+  → `java.math.BigInteger` (to preserve the full unsigned range in signed Java types). This
+  project's own `%apply int64_t { uint64_t }` override in jni_interface.i, commented "Avoid
+  uint64_t to be converted to BigInteger", is direct evidence it follows exactly that convention
+  and had to explicitly opt the 64-bit case out of it. Applied throughout `RealJamiBridge`/
+  `RealJamiEvent`/`JamiCallbackAdapter` wherever a raw `uint32_t` appeared without a
+  corresponding `%apply int64_t` override — these are now `Long`, not `Int`:
+  `swarmLoaded`/`messagesFound`'s `id`, `onConversationError`'s `code`, `loadConversation`/
+  `loadSwarmUntil`/`countInteractions`/`searchConversation`'s return values and
+  `searchConversation`'s `maxResult` param, `queryPeerServices`'s return value and
+  `peerServicesReceived`'s `requestId`, and `DataTransferEventCode`/`DataTransferError`
+  (`RealDataTransferEventCode`/`RealDataTransferError`, since both are `%apply uint32_t`'d).
+  `uint16_t` (`NetworkServiceCallback`'s/`openServiceTunnel`'s `localPort`) stays `Int` under
+  this same rule, now with higher confidence than the original guess.
+
+None of the above is 100% certain without actually running SWIG and reading the generated
+`.java` files — it's reasoned from SWIG's documented Java-target conventions plus this project's
+own corroborating uint64_t override — but it's meaningfully more confident than a blind guess,
+and worth checking these specific spots first if a real build produces type-mismatch errors.
+
+### Still open
+
 - `VectMap`'s exact API: assumed index/size-based (`size()`, `get(int)`, `add(T)`) rather than a
   `java.util.List`, based on jni_interface.i's own `toNative()` helper for `vector<map<string,
   string>>` using that shape — but whether it also implements `java.lang.Iterable`/`List` (which
   would additionally allow `for`/`.map{}`) isn't confirmed. `StringMap` is on firmer ground: the
   same file's `map<string, string>` javacode block uses `entrySet()`/`put()`/`get()` directly, so
   it's treated here as a real `java.util.Map<String, String>`, not guessed. Same assumption
-  extends to `StringVect` (`RealJamiBridge.setSubscriptions`).
+  extends to `StringVect` (`RealJamiBridge.setSubscriptions`) and `SwarmMessageVect`.
 - `fileTransferInfo`'s SWIG `OUTPUT`-typemapped `int64_t& total_out`/`progress_out` params: the
   .i file confirms the pattern generates array-based Java out-params (explicitly shown for the
-  `std::string& OUTPUT` one, which becomes `String[]`), but the exact array element type for the
-  two `int64_t` ones (`long[]` assumed in `RealJamiBridge.fileTransferInfo`) isn't confirmed.
-- `registerName`'s `scheme`/`password` parameters — `RealJamiBridge.registerName` passes empty
-  strings for both, which is assumed fine for the default Jami name server but hasn't been
-  confirmed against a real running daemon
+  `std::string& OUTPUT` one, which becomes `String[]`), and `long[]` for the two `int64_t` ones
+  is SWIG's standard documented `TYPE& OUTPUT` idiom for a primitive — reasonably confident, but
+  still not confirmed against a real generated build.
 - `VideoCallback.getCameraInfo`'s director signature (`std::vector<int> *formats,
   std::vector<unsigned> *sizes, std::vector<unsigned> *rates` — raw out-pointers, not the
   `int32_t`/`uint32_t` vector aliases `IntVect`/`UintVect` are templated from) is the one place
@@ -149,10 +189,6 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
   exact struct field (`RealSwarmMessage.fromSwarmMessage`)
 - `size_t n` in `loadConversation` — assumed `Long` (SWIG's common default for size_t), not
   confirmed against a real generated build
-- `NetworkServiceCallback`'s `requestId` (`uint32_t`) and `localPort` (`uint16_t`) — no explicit
-  `%apply` override exists for either in jni_interface.i, so both are assumed to fall back to
-  SWIG's un-overridden defaults as `Int` here; `localPort` in particular could plausibly come out
-  as `Short` instead
 
 ## Steps to actually build (once you have the resources)
 
@@ -213,7 +249,7 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Get the actual Jami ID | `JamiService.getAccountDetails(accountId)`'s `Account.username` key — NOT the `accountId` param itself, that's a separate internal id (`RealJamiBridge.getJamiId`) |
 | Registration/device state | `JamiService.getVolatileAccountDetails(accountId)` — `Account.registeredName`/`Account.registrationStatus`/`Account.deviceAnnounced` |
 | Register username | `JamiService.registerName(accountId, name, scheme, password)`, result via `ConfigurationCallback.nameRegistrationEnded` |
-| Send message | `JamiService.sendAccountTextMessage(accountId, to, StringMap("text/plain" -> body), flag)` |
+| Send message | `JamiService.sendAccountTextMessage(accountId, to, StringMap("text/plain" -> body), flag)` — `flag` bit 0 = "only if peer currently connected" (confirmed, see below) |
 | Message history | `JamiService.getLastMessages(accountId, baseTimestampMs)` → `MessageVect` of `libjami::Message` (`from`/`payloads`/`received`) |
 | Typing indicator | `JamiService.setIsComposing(accountId, conversationUri, bool)`; incoming via `ConfigurationCallback.composingStatusChanged` |
 | Mark read / receipts | `JamiService.setMessageDisplayed(accountId, conversationUri, messageId, status)` — status is `libjami::Account::MessageStates` (UNKNOWN=0, SENDING=1, SENT=2, DISPLAYED=3, FAILURE=4, CANCELLED=5) — no separate DELIVERED |
@@ -246,7 +282,7 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Feeding camera frames in | `net.jami.daemon.JamiServiceJNI.captureVideoFrame`/`captureVideoPacket`, called from real Android camera capture code (CameraX/Camera2) in response to `VideoCallback.startCapture`; out of scope for this pass |
 | Start/manage a swarm conversation | `JamiService.startConversation(accountId)` / `getConversations`/`removeConversation` / `acceptConversationRequest`/`declineConversationRequest`/`getConversationRequests` |
 | Conversation members | `JamiService.addConversationMember`/`removeConversationMember`/`getConversationMembers(accountId, conversationId)` |
-| Send/load conversation messages | `RealJamiBridge.sendConversationMessage` (→ `JamiService.sendMessage`) / `loadConversation` (→ `SwarmLoaded` event) / `loadSwarmUntil` / `searchConversation` (→ `MessagesFound` event) — **the real messaging path, see the architecture note above** |
+| Send/load conversation messages | `RealJamiBridge.sendConversationMessage` (→ `JamiService.sendMessage`, `action` = send/reply/edit/react, confirmed, see below) / `loadConversation` (→ `SwarmLoaded` event) / `loadSwarmUntil` / `searchConversation` (→ `MessagesFound` event) — **the real messaging path, see the architecture note above** |
 | Conversation message shape | `libjami::SwarmMessage` (conversation.i): `id`/`type`/`linearizedParent`/`body` (StringMap)/`reactions`/`editions` (VectMap)/`status` (per-device StringMap→int, assumed `IntegerMap`-shaped) |
 | Conversation member events | `ConversationCallback.conversationMemberEvent(accountId, conversationId, memberUri, event)` — `event` is `RealConversationMemberEvent`: ADD=0, JOIN=1, REMOVE=2, BAN=3, UNBAN=4 |
 | Conversation metadata | `JamiService.updateConversationInfos`/`conversationInfos`/`setConversationPreferences`/`getConversationPreferences` |

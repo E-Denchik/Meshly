@@ -91,3 +91,15 @@ enum class RealConversationMemberEvent(val wireValue: Int) {
             entries.firstOrNull { it.wireValue == value } ?: UNKNOWN
     }
 }
+
+/**
+ * `sendMessage`'s (conversation.i) `flag` parameter. Confirmed from its implementation
+ * (src/client/conversation_interface.cpp): this is an action selector, not a bitmask (contrast
+ * [RealJamiBridge.sendTextMessage]'s `flag`, which IS a bitmask on the older account-message API)
+ * -- 0 sends a new message or reply (`commitId`/`replyTo` is the parent), 1 edits an existing
+ * message (`commitId` is the message being edited, `message` is the new content), 2 reacts to a
+ * message (`commitId` is the message being reacted to, `message` is the reaction, e.g. an emoji).
+ */
+enum class RealConversationMessageAction(val wireValue: Int) {
+    SEND_OR_REPLY(0), EDIT(1), REACT(2)
+}
