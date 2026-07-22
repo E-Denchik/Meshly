@@ -210,4 +210,98 @@ sealed class RealJamiEvent {
     ) : RealJamiEvent()
 
     data class VideoDecodingStopped(val id: String, val shmPath: String, val isMixer: Boolean) : RealJamiEvent()
+
+    // --- Conversation (ConversationCallback) ---------------------------------------------------
+    // From conversation.i. See RealConversation.kt's top-level note: this, not the account-message
+    // API wired earlier, is very likely the real path a 1:1 or group chat feature should use.
+
+    /** Answer to a `loadConversation`/similar request identified by `id`: the requested history page. */
+    data class SwarmLoaded(
+        val id: Int,
+        val accountId: String,
+        val conversationId: String,
+        val messages: List<RealSwarmMessage>
+    ) : RealJamiEvent()
+
+    /** Answer to `searchConversation`, identified by `id`. Raw maps, not [RealSwarmMessage] -- see call site. */
+    data class MessagesFound(
+        val id: Int,
+        val accountId: String,
+        val conversationId: String,
+        val messages: VectMap
+    ) : RealJamiEvent()
+
+    /** A new message arrived in a conversation Meshly is already caught up on. */
+    data class SwarmMessageReceived(val accountId: String, val conversationId: String, val message: RealSwarmMessage) : RealJamiEvent()
+
+    /** An existing message was edited/updated (reactions, edits, status changes surface here too). */
+    data class SwarmMessageUpdated(val accountId: String, val conversationId: String, val message: RealSwarmMessage) : RealJamiEvent()
+
+    data class ReactionAdded(
+        val accountId: String,
+        val conversationId: String,
+        val messageId: String,
+        val reaction: Map<String, String>
+    ) : RealJamiEvent()
+
+    data class ReactionRemoved(
+        val accountId: String,
+        val conversationId: String,
+        val messageId: String,
+        val reactionId: String
+    ) : RealJamiEvent()
+
+    data class ConversationProfileUpdated(
+        val accountId: String,
+        val conversationId: String,
+        val profile: Map<String, String>
+    ) : RealJamiEvent()
+
+    /** Someone invited this account to a conversation (1:1 contact request or group invite). */
+    data class ConversationRequestReceived(
+        val accountId: String,
+        val conversationId: String,
+        val metadata: Map<String, String>
+    ) : RealJamiEvent()
+
+    data class ConversationRequestDeclined(val accountId: String, val conversationId: String) : RealJamiEvent()
+
+    /** The conversation finished syncing and is now usable (send/receive messages, list members). */
+    data class ConversationReady(val accountId: String, val conversationId: String) : RealJamiEvent()
+
+    data class ConversationRemoved(val accountId: String, val conversationId: String) : RealJamiEvent()
+
+    /** A member joined/left/was banned; `event` is [RealConversationMemberEvent]. */
+    data class ConversationMemberEvent(
+        val accountId: String,
+        val conversationId: String,
+        val memberUri: String,
+        val event: RealConversationMemberEvent
+    ) : RealJamiEvent()
+
+    data class ConversationError(val accountId: String, val conversationId: String, val code: Int, val what: String) : RealJamiEvent()
+
+    data class ConversationPreferencesUpdated(
+        val accountId: String,
+        val conversationId: String,
+        val preferences: Map<String, String>
+    ) : RealJamiEvent()
+
+    // --- Network services (NetworkServiceCallback) ---------------------------------------------
+    // From networkservicemanager.i -- a niche/experimental "expose a local service to a peer over
+    // a DHT/ICE tunnel" feature, not central to Meshly's messaging/calling core. Wired for
+    // completeness since it's part of the real JNI-exposed API either way.
+
+    /** Answer to `queryPeerServices`, identified by `requestId`. `servicesJson` is a raw JSON blob. */
+    data class PeerServicesReceived(
+        val requestId: Int,
+        val accountId: String,
+        val peerId: String,
+        val status: Int,
+        val servicesJson: String
+    ) : RealJamiEvent()
+
+    data class ServiceTunnelOpened(val accountId: String, val tunnelId: String, val localPort: Int) : RealJamiEvent()
+
+    data class ServiceTunnelClosed(val accountId: String, val tunnelId: String, val reason: String) : RealJamiEvent()
 }

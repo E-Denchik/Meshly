@@ -21,6 +21,22 @@ None of the above was available/feasible on this machine, so this pass focused o
 Gradle/CMake wiring and the real JNI contract right — using the actual upstream source as the
 reference, not guesswork — so a future build attempt (on a beefier machine, or CI) can just run.
 
+## Important: swarm conversations, not account-messages, are the real messaging path
+
+An earlier pass in this scaffolding wired `sendAccountTextMessage`/`getLastMessages`/
+`accountMessageStatusChanged` (configurationmanager.i) as "the messaging API." Reading
+conversation.i while wiring `ConversationCallback` turned up a discrepancy worth flagging
+prominently rather than leaving buried in a code comment: **modern libjami routes essentially
+all real messaging — including plain 1:1 chats, not just group chats — through swarm
+conversations**, not that older API. The evidence: `RealContact` (from `getContacts`) already
+carries a non-optional `conversationId` field, populated as soon as a contact is confirmed —
+that's the swarm conversation backing the 1:1 relationship. A real chat feature should very
+likely call `RealJamiBridge.sendConversationMessage(accountId, contact.conversationId, ...)` /
+`loadConversation` (conversation.i), not `sendTextMessage`/`getLastMessages`. Both APIs are wired
+here since both are real and JNI-exposed, but whoever finishes wiring `RealJamiBridge` into `:app`
+should default to the conversation-based one and treat the account-message one as legacy/fallback
+unless testing against a real daemon says otherwise.
+
 ## What's already in place
 
 - `native/upstream/jami-daemon/` — shallow clone (`--depth=1`) of
@@ -44,8 +60,15 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     removeVideoDevice/setDeviceOrientation/getSettings/applySettings/
     getDecodingAccelerated/setDecodingAccelerated/getEncodingAccelerated/
     setEncodingAccelerated/startAudioDevice/stopAudioDevice/openVideoInput/closeVideoInput/
-    startLocalMediaRecorder/stopLocalRecorder`), matching `net.jami.daemon.JamiService`'s real
-    API surface as found in `native/upstream/jami-daemon/bin/jni/*.i`. Includes
+    startLocalMediaRecorder/stopLocalRecorder/startConversation/acceptConversationRequest/
+    declineConversationRequest/removeConversation/getConversations/getConversationRequests/
+    updateConversationInfos/conversationInfos/setConversationPreferences/
+    getConversationPreferences/addConversationMember/removeConversationMember/
+    getConversationMembers/sendConversationMessage/loadConversation/loadSwarmUntil/
+    countInteractions/clearCache/searchConversation/addExposedService/updateExposedService/
+    removeExposedService/getExposedServices/queryPeerServices/openServiceTunnel/
+    closeServiceTunnel/getActiveTunnels`), matching `net.jami.daemon.JamiService`'s real API
+    surface as found in `native/upstream/jami-daemon/bin/jni/*.i`. Includes
     `getJamiId`/`getRegisteredName` convenience wrappers over the raw details maps, and a
     `cameraProvider` hook for `VideoCallback.getCameraInfo` (see `RealVideoDevice.kt` below).
     Deliberately NOT wrapped: `registerSinkTarget` and the Surface-rendering / camera-capture
@@ -77,11 +100,17 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
   - `RealJamiEvent.kt` — sealed class capturing the native signals we care about (registration
     state, incoming call/message, new/hold/mute/media-negotiation call signals, contact
     added/removed, trust requests, name registration result, composing/typing indicator, buddy
-    presence, file transfer progress, video capture/decoding signals).
-  - `JamiCallbackAdapter.kt` — subclasses of all 5 SWIG director callback classes Meshly consumes
+    presence, file transfer progress, video capture/decoding signals, swarm conversation/member
+    signals, peer-service-tunnel signals).
+  - `RealConversation.kt` — `RealSwarmMessage` (mirrors `libjami::SwarmMessage`, the real
+    per-message shape used by swarm conversations -- see the architecture note above) and
+    `RealConversationMemberEvent` (`conversationMemberEvent`'s int, reconstructed from
+    `Conversation::processMessages`'s inline action-code mapping in conversation.cpp: ADD=0,
+    JOIN=1, REMOVE=2, BAN=3, UNBAN=4 -- not a named enum anywhere in the daemon itself).
+  - `JamiCallbackAdapter.kt` — subclasses of all 7 SWIG director callback classes
     (`Callback`, `ConfigurationCallback`, `PresenceCallback`, `DataTransferCallback`,
-    `VideoCallback` forward into `RealJamiEvent`; `ConversationCallback`/`NetworkServiceCallback`
-    are still empty no-op stubs since Meshly doesn't consume those signals yet).
+    `VideoCallback`, `ConversationCallback`, `NetworkServiceCallback`) now forward into
+    `RealJamiEvent` -- no callback interface is left as a no-op stub anymore.
 
 None of this compiles right now — `net.jami.daemon.*` (JamiServiceJNI, Callback,
 ConfigurationCallback, ...) only exists after `bin/jni/make-swig.sh` actually runs, which only
@@ -114,6 +143,16 @@ too — double check them against the generated `net/jami/daemon/*.java` files:
   in the whole API surface this pass couldn't cross-check as confidently as everything else;
   `MeshlyVideoCallback.getCameraInfo` assumes SWIG maps it to `IntVect`/`UintVect` params anyway,
   filled via `.add()`
+- `libjami::SwarmMessage.status` (`std::map<std::string, int32_t>`) is assumed to reuse the
+  `IntegerMap` template (`map<string, int>`) since `int32_t`/`int` are the same underlying type,
+  but no separate `map<string, int32_t>` template exists to confirm SWIG unifies the two for this
+  exact struct field (`RealSwarmMessage.fromSwarmMessage`)
+- `size_t n` in `loadConversation` — assumed `Long` (SWIG's common default for size_t), not
+  confirmed against a real generated build
+- `NetworkServiceCallback`'s `requestId` (`uint32_t`) and `localPort` (`uint16_t`) — no explicit
+  `%apply` override exists for either in jni_interface.i, so both are assumed to fall back to
+  SWIG's un-overridden defaults as `Int` here; `localPort` in particular could plausibly come out
+  as `Short` instead
 
 ## Steps to actually build (once you have the resources)
 
@@ -205,6 +244,14 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Video device management | `JamiService.setDefaultDevice`/`getDefaultDevice`/`addVideoDevice`/`removeVideoDevice`/`setDeviceOrientation`/`getSettings`/`applySettings`/`get`/`setDecodingAccelerated`/`get`/`setEncodingAccelerated`/`startAudioDevice`/`stopAudioDevice`/`openVideoInput`/`closeVideoInput`/`startLocalMediaRecorder`/`stopLocalRecorder` (all videomanager.i, `namespace libjami`) |
 | Rendering a video stream to a Surface | NOT `JamiService.registerSinkTarget` (its `SinkTarget` param isn't SWIG-callable from Java) — instead `net.jami.daemon.JamiServiceJNI.acquireNativeWindow`/`setNativeWindowGeometry`/`registerVideoCallback`/`unregisterVideoCallback`/`releaseNativeWindow`, hand-written JNI natives in videomanager.i, on a different generated class than `JamiService`. Needs a real `Surface` from the UI layer; out of scope for this pass. |
 | Feeding camera frames in | `net.jami.daemon.JamiServiceJNI.captureVideoFrame`/`captureVideoPacket`, called from real Android camera capture code (CameraX/Camera2) in response to `VideoCallback.startCapture`; out of scope for this pass |
+| Start/manage a swarm conversation | `JamiService.startConversation(accountId)` / `getConversations`/`removeConversation` / `acceptConversationRequest`/`declineConversationRequest`/`getConversationRequests` |
+| Conversation members | `JamiService.addConversationMember`/`removeConversationMember`/`getConversationMembers(accountId, conversationId)` |
+| Send/load conversation messages | `RealJamiBridge.sendConversationMessage` (→ `JamiService.sendMessage`) / `loadConversation` (→ `SwarmLoaded` event) / `loadSwarmUntil` / `searchConversation` (→ `MessagesFound` event) — **the real messaging path, see the architecture note above** |
+| Conversation message shape | `libjami::SwarmMessage` (conversation.i): `id`/`type`/`linearizedParent`/`body` (StringMap)/`reactions`/`editions` (VectMap)/`status` (per-device StringMap→int, assumed `IntegerMap`-shaped) |
+| Conversation member events | `ConversationCallback.conversationMemberEvent(accountId, conversationId, memberUri, event)` — `event` is `RealConversationMemberEvent`: ADD=0, JOIN=1, REMOVE=2, BAN=3, UNBAN=4 |
+| Conversation metadata | `JamiService.updateConversationInfos`/`conversationInfos`/`setConversationPreferences`/`getConversationPreferences` |
+| Expose/query peer services (niche) | `JamiService.addExposedService`/`updateExposedService`/`removeExposedService`/`getExposedServices`/`queryPeerServices` → `NetworkServiceCallback.peerServicesReceived` |
+| Peer service tunnels (niche) | `JamiService.openServiceTunnel`/`closeServiceTunnel`/`getActiveTunnels` → `NetworkServiceCallback.serviceTunnelOpened`/`serviceTunnelClosed` |
 
 `"RING"` as the account type string is real and current (`JamiAccount::ACCOUNT_TYPE_JAMI` in
 `src/jamidht/jamiaccount_config.h` is literally `"RING"`, kept for on-disk config compatibility

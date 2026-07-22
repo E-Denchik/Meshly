@@ -81,8 +81,8 @@ object RealJamiBridge {
             MeshlyPresenceCallback(_events),
             MeshlyDataTransferCallback(_events),
             MeshlyVideoCallback(_events),
-            MeshlyConversationCallback(),
-            MeshlyNetworkServiceCallback()
+            MeshlyConversationCallback(_events),
+            MeshlyNetworkServiceCallback(_events)
         )
         started = true
     }
@@ -465,5 +465,145 @@ object RealJamiBridge {
      */
     fun sendTrustRequest(accountId: String, toUri: String, payload: Blob = Blob()) {
         JamiService.sendTrustRequest(accountId, toUri, payload)
+    }
+
+    // --- Conversations (swarm) --------------------------------------------------------------------
+    // From conversation.i. See RealConversation.kt's top-level note: this is very likely the real
+    // messaging path (sendConversationMessage/loadConversation), not sendTextMessage/
+    // getLastMessages above -- a confirmed RealContact already carries the conversationId to use.
+
+    /** Starts a brand-new conversation (e.g. before inviting the first member). Returns its id. */
+    fun startConversation(accountId: String): String = JamiService.startConversation(accountId)
+
+    fun acceptConversationRequest(accountId: String, conversationId: String) {
+        JamiService.acceptConversationRequest(accountId, conversationId)
+    }
+
+    fun declineConversationRequest(accountId: String, conversationId: String) {
+        JamiService.declineConversationRequest(accountId, conversationId)
+    }
+
+    fun removeConversation(accountId: String, conversationId: String): Boolean =
+        JamiService.removeConversation(accountId, conversationId)
+
+    fun getConversations(accountId: String): List<String> {
+        val raw = JamiService.getConversations(accountId)
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    /** Pending incoming conversation invites (1:1 contact requests surface here too). */
+    fun getConversationRequests(accountId: String): List<StringMap> {
+        val raw = JamiService.getConversationRequests(accountId)
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    fun updateConversationInfos(accountId: String, conversationId: String, infos: StringMap) {
+        JamiService.updateConversationInfos(accountId, conversationId, infos)
+    }
+
+    fun conversationInfos(accountId: String, conversationId: String): StringMap =
+        JamiService.conversationInfos(accountId, conversationId)
+
+    fun setConversationPreferences(accountId: String, conversationId: String, prefs: StringMap) {
+        JamiService.setConversationPreferences(accountId, conversationId, prefs)
+    }
+
+    fun getConversationPreferences(accountId: String, conversationId: String): StringMap =
+        JamiService.getConversationPreferences(accountId, conversationId)
+
+    fun addConversationMember(accountId: String, conversationId: String, contactUri: String) {
+        JamiService.addConversationMember(accountId, conversationId, contactUri)
+    }
+
+    fun removeConversationMember(accountId: String, conversationId: String, contactUri: String) {
+        JamiService.removeConversationMember(accountId, conversationId, contactUri)
+    }
+
+    fun getConversationMembers(accountId: String, conversationId: String): List<StringMap> {
+        val raw = JamiService.getConversationMembers(accountId, conversationId)
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    /**
+     * Sends a message into a swarm conversation -- see this section's header note on why this,
+     * not [sendTextMessage], is very likely the one a real chat feature should call. `flag`'s
+     * meaning wasn't confirmed, same caveat as [sendTextMessage]'s.
+     */
+    fun sendConversationMessage(accountId: String, conversationId: String, message: String, replyTo: String = "", flag: Int = 0) {
+        JamiService.sendMessage(accountId, conversationId, message, replyTo, flag)
+    }
+
+    /**
+     * Requests a page of conversation history starting from `fromMessage` (empty string for the
+     * most recent). Answer arrives async via [RealJamiEvent.SwarmLoaded], matched by the `id`
+     * this call returns. `n` is `size_t` on the C++ side -- assumed `Long` here (SWIG's common
+     * default for size_t), not confirmed against a real generated build.
+     */
+    fun loadConversation(accountId: String, conversationId: String, fromMessage: String = "", n: Long = 0): Int =
+        JamiService.loadConversation(accountId, conversationId, fromMessage, n)
+
+    fun loadSwarmUntil(accountId: String, conversationId: String, fromMessage: String, toMessage: String): Int =
+        JamiService.loadSwarmUntil(accountId, conversationId, fromMessage, toMessage)
+
+    fun countInteractions(accountId: String, conversationId: String, toId: String, fromId: String, authorUri: String): Int =
+        JamiService.countInteractions(accountId, conversationId, toId, fromId, authorUri)
+
+    fun clearCache(accountId: String, conversationId: String) {
+        JamiService.clearCache(accountId, conversationId)
+    }
+
+    /** Answer arrives async via [RealJamiEvent.MessagesFound], matched by the `id` this call returns. */
+    fun searchConversation(
+        accountId: String,
+        conversationId: String,
+        author: String,
+        lastId: String,
+        regexSearch: String,
+        type: String,
+        after: Long,
+        before: Long,
+        maxResult: Int,
+        flag: Int
+    ): Int = JamiService.searchConversation(
+        accountId, conversationId, author, lastId, regexSearch, type, after, before, maxResult, flag
+    )
+
+    // --- Network services --------------------------------------------------------------------------
+    // From networkservicemanager.i -- niche/experimental peer-service-tunnel feature, wired for
+    // completeness rather than because Meshly's messenger/calling core needs it.
+
+    fun addExposedService(accountId: String, details: StringMap): String = JamiService.addExposedService(accountId, details)
+
+    fun updateExposedService(accountId: String, details: StringMap): Boolean =
+        JamiService.updateExposedService(accountId, details)
+
+    fun removeExposedService(accountId: String, serviceId: String): Boolean =
+        JamiService.removeExposedService(accountId, serviceId)
+
+    fun getExposedServices(accountId: String): List<StringMap> {
+        val raw = JamiService.getExposedServices(accountId)
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    /** Answer arrives async via [RealJamiEvent.PeerServicesReceived], matched by the returned request id. */
+    fun queryPeerServices(accountId: String, peerUri: String): Int = JamiService.queryPeerServices(accountId, peerUri)
+
+    /** `localPort` is `uint16_t` on the C++ side -- see [MeshlyNetworkServiceCallback]'s note on
+     *  why this is assumed `Int` rather than confirmed. */
+    fun openServiceTunnel(
+        accountId: String,
+        peerUri: String,
+        deviceId: String,
+        serviceId: String,
+        serviceName: String,
+        localPort: Int
+    ): String = JamiService.openServiceTunnel(accountId, peerUri, deviceId, serviceId, serviceName, localPort)
+
+    fun closeServiceTunnel(accountId: String, tunnelId: String): Boolean =
+        JamiService.closeServiceTunnel(accountId, tunnelId)
+
+    fun getActiveTunnels(accountId: String): List<StringMap> {
+        val raw = JamiService.getActiveTunnels(accountId)
+        return (0 until raw.size()).map { raw[it] }
     }
 }

@@ -40,6 +40,7 @@ import net.jami.daemon.IntVect
 import net.jami.daemon.NetworkServiceCallback
 import net.jami.daemon.PresenceCallback
 import net.jami.daemon.StringMap
+import net.jami.daemon.SwarmMessageVect
 import net.jami.daemon.UintVect
 import net.jami.daemon.VectMap
 import net.jami.daemon.VideoCallback
@@ -266,8 +267,128 @@ internal class MeshlyVideoCallback(
     }
 }
 
-// The remaining two director interfaces (Conversation, NetworkService) are required
-// arguments to JamiService.init(...) but Meshly doesn't consume their signals yet. Empty
-// subclasses are enough since every method in the upstream .i files has a default no-op body.
-internal class MeshlyConversationCallback : ConversationCallback()
-internal class MeshlyNetworkServiceCallback : NetworkServiceCallback()
+/**
+ * Bridges libjami's [ConversationCallback] into [RealJamiEvent]. See RealConversation.kt's
+ * top-level note: swarm conversations, not the account-message API, are very likely the real
+ * path a 1:1 or group chat feature should use.
+ */
+internal class MeshlyConversationCallback(
+    private val events: MutableSharedFlow<RealJamiEvent>
+) : ConversationCallback() {
+
+    override fun swarmLoaded(id: Int, accountId: String, conversationId: String, messages: SwarmMessageVect) {
+        val mapped = (0 until messages.size()).map { RealSwarmMessage.fromSwarmMessage(messages[it]) }
+        events.tryEmit(RealJamiEvent.SwarmLoaded(id, accountId, conversationId, mapped))
+    }
+
+    override fun messagesFound(id: Int, accountId: String, conversationId: String, messages: VectMap) {
+        events.tryEmit(RealJamiEvent.MessagesFound(id, accountId, conversationId, messages))
+    }
+
+    override fun swarmMessageReceived(accountId: String, conversationId: String, message: net.jami.daemon.SwarmMessage) {
+        events.tryEmit(
+            RealJamiEvent.SwarmMessageReceived(accountId, conversationId, RealSwarmMessage.fromSwarmMessage(message))
+        )
+    }
+
+    override fun swarmMessageUpdated(accountId: String, conversationId: String, message: net.jami.daemon.SwarmMessage) {
+        events.tryEmit(
+            RealJamiEvent.SwarmMessageUpdated(accountId, conversationId, RealSwarmMessage.fromSwarmMessage(message))
+        )
+    }
+
+    override fun reactionAdded(accountId: String, conversationId: String, messageId: String, reaction: StringMap) {
+        events.tryEmit(
+            RealJamiEvent.ReactionAdded(accountId, conversationId, messageId, reaction.entries.associate { it.key to it.value })
+        )
+    }
+
+    override fun reactionRemoved(accountId: String, conversationId: String, messageId: String, reactionId: String) {
+        events.tryEmit(RealJamiEvent.ReactionRemoved(accountId, conversationId, messageId, reactionId))
+    }
+
+    override fun conversationProfileUpdated(accountId: String, conversationId: String, profile: StringMap) {
+        events.tryEmit(
+            RealJamiEvent.ConversationProfileUpdated(accountId, conversationId, profile.entries.associate { it.key to it.value })
+        )
+    }
+
+    override fun conversationRequestReceived(accountId: String, conversationId: String, metadatas: StringMap) {
+        events.tryEmit(
+            RealJamiEvent.ConversationRequestReceived(
+                accountId,
+                conversationId,
+                metadatas.entries.associate { it.key to it.value }
+            )
+        )
+    }
+
+    override fun conversationRequestDeclined(accountId: String, conversationId: String) {
+        events.tryEmit(RealJamiEvent.ConversationRequestDeclined(accountId, conversationId))
+    }
+
+    override fun conversationReady(accountId: String, conversationId: String) {
+        events.tryEmit(RealJamiEvent.ConversationReady(accountId, conversationId))
+    }
+
+    override fun conversationRemoved(accountId: String, conversationId: String) {
+        events.tryEmit(RealJamiEvent.ConversationRemoved(accountId, conversationId))
+    }
+
+    override fun conversationMemberEvent(accountId: String, conversationId: String, memberUri: String, event: Int) {
+        events.tryEmit(
+            RealJamiEvent.ConversationMemberEvent(
+                accountId,
+                conversationId,
+                memberUri,
+                RealConversationMemberEvent.fromWireValue(event)
+            )
+        )
+    }
+
+    override fun onConversationError(accountId: String, conversationId: String, code: Int, what: String) {
+        events.tryEmit(RealJamiEvent.ConversationError(accountId, conversationId, code, what))
+    }
+
+    override fun conversationPreferencesUpdated(accountId: String, conversationId: String, preferences: StringMap) {
+        events.tryEmit(
+            RealJamiEvent.ConversationPreferencesUpdated(
+                accountId,
+                conversationId,
+                preferences.entries.associate { it.key to it.value }
+            )
+        )
+    }
+}
+
+/**
+ * Bridges libjami's [NetworkServiceCallback] into [RealJamiEvent]. Niche/experimental
+ * peer-service-tunnel feature -- see RealJamiEvent.kt's doc on these three events.
+ */
+internal class MeshlyNetworkServiceCallback(
+    private val events: MutableSharedFlow<RealJamiEvent>
+) : NetworkServiceCallback() {
+
+    // `requestId` is `uint32_t` and `localPort` is `uint16_t` on the C++ side; no explicit `%apply`
+    // override for either exists in jni_interface.i (unlike uint64_t/time_t), so both are assumed
+    // to fall back to SWIG's un-overridden defaults (`int` for unsigned int, `short` for unsigned
+    // short) here as `Int` -- not confirmed against a real generated build, and `localPort` in
+    // particular could plausibly come out as `Short` instead.
+    override fun peerServicesReceived(
+        requestId: Int,
+        accountId: String,
+        peerId: String,
+        status: Int,
+        servicesJson: String
+    ) {
+        events.tryEmit(RealJamiEvent.PeerServicesReceived(requestId, accountId, peerId, status, servicesJson))
+    }
+
+    override fun serviceTunnelOpened(accountId: String, tunnelId: String, localPort: Int) {
+        events.tryEmit(RealJamiEvent.ServiceTunnelOpened(accountId, tunnelId, localPort))
+    }
+
+    override fun serviceTunnelClosed(accountId: String, tunnelId: String, reason: String) {
+        events.tryEmit(RealJamiEvent.ServiceTunnelClosed(accountId, tunnelId, reason))
+    }
+}
