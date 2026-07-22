@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.meshly.app.data.repository.ChatRepositoryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-07-22T13:51:01" hostname="kali" time="0.012">
-  <properties/>
-  <testcase name="sendMessage lands as sent after the sending to sent hand-off" classname="org.meshly.app.data.repository.ChatRepositoryTest" time="0.011"/>
-  <testcase name="receiveMessage persists an incoming message and can later be marked delivered" classname="org.meshly.app.data.repository.ChatRepositoryTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
