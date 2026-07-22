@@ -22,7 +22,9 @@ package org.meshly.app.ui.onboarding
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,8 +34,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import org.meshly.app.R
 
 @Composable
 fun ExportAccountDialog(
@@ -47,29 +51,33 @@ fun ExportAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Export account") },
+        title = { Text(stringResource(R.string.export_account_title)) },
         text = {
             Column {
-                Text("Protect your key backup with a password. Anyone with this archive and password can impersonate your Jami ID.")
+                Text(stringResource(R.string.export_account_warning))
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.label_password)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.padding(top = 12.dp)
                 )
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    label = { Text("Confirm password") },
+                    label = { Text(stringResource(R.string.label_confirm_password)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 resultBundle?.let {
                     Text(
-                        "Archive ready: $it",
+                        stringResource(R.string.export_ready_hint),
+                        style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 12.dp)
                     )
+                    SelectionContainer {
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         },
@@ -78,12 +86,12 @@ fun ExportAccountDialog(
                 enabled = passwordsMatch,
                 onClick = { resultBundle = onExport(password) }
             ) {
-                Text("Export")
+                Text(stringResource(R.string.action_export))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.action_close))
             }
         }
     )

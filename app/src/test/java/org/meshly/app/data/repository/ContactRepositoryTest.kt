@@ -67,4 +67,28 @@ class ContactRepositoryTest {
 
         assertTrue(repository.allContacts.first().none { it.jamiId == jamiId })
     }
+
+    @Test
+    fun `blockContact marks a confirmed contact as blocked without deleting it`() = runBlocking {
+        val jamiId = "jami:${UUID.randomUUID()}"
+        val confirmed = Contact(jamiId = jamiId, displayName = "Dave", status = ContactStatus.CONFIRMED)
+        dao.insertOrUpdateContact(org.meshly.app.data.local.ContactEntity.fromDomain(confirmed))
+
+        repository.blockContact(jamiId)
+
+        val contact = repository.allContacts.first().single { it.jamiId == jamiId }
+        assertEquals(ContactStatus.BLOCKED, contact.status)
+    }
+
+    @Test
+    fun `unblockContact restores a blocked contact to confirmed`() = runBlocking {
+        val jamiId = "jami:${UUID.randomUUID()}"
+        val blocked = Contact(jamiId = jamiId, displayName = "Erin", status = ContactStatus.BLOCKED)
+        dao.insertOrUpdateContact(org.meshly.app.data.local.ContactEntity.fromDomain(blocked))
+
+        repository.unblockContact(blocked)
+
+        val contact = repository.allContacts.first().single { it.jamiId == jamiId }
+        assertEquals(ContactStatus.CONFIRMED, contact.status)
+    }
 }

@@ -47,4 +47,6 @@ class CallRepository(
     fun toggleCamera(): Boolean = jamiBridge.toggleCamera()
 
     fun flipCamera(): Boolean = jamiBridge.flipCamera()
+
+    fun toggleScreenShare(): Boolean = jamiBridge.toggleScreenShare()
 }

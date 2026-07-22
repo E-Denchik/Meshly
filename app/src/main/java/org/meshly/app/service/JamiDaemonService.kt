@@ -37,6 +37,8 @@ import org.meshly.app.MeshlyApplication
 import org.meshly.app.R
 import org.meshly.app.core.JamiBridge
 import org.meshly.app.core.JamiEvent
+import org.meshly.app.data.model.CallType
+import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.ui.MainActivity
 import org.meshly.app.ui.call.IncomingCallActivity
 
@@ -50,6 +52,7 @@ class JamiDaemonService : Service() {
         startForeground(NOTIFICATION_ID, createNotification())
         JamiBridge.getInstance().startDaemon()
         observeIncomingCalls()
+        observeIncomingMessages()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -86,8 +89,14 @@ class JamiDaemonService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val titleRes = if (session.callType == CallType.VIDEO) {
+            R.string.notification_incoming_video_call
+        } else {
+            R.string.notification_incoming_audio_call
+        }
+
         val notification = NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_CALL_ID)
-            .setContentTitle("Incoming ${session.callType.name.lowercase()} call")
+            .setContentTitle(getString(titleRes))
             .setContentText(session.peerDisplayName)
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -101,6 +110,45 @@ class JamiDaemonService : Service() {
         notificationManager.notify(session.callId.hashCode(), notification)
     }
 
+    /** Posts a heads-up notification for an incoming direct message (FR-5.1), no FCM involved -
+     *  the event arrives straight from [JamiBridge]'s own event flow. Tapping it deep-links into
+     *  that conversation via [MainActivity]'s deep-link extras. */
+    private fun observeIncomingMessages() {
+        JamiBridge.getInstance().events
+            .filterIsInstance<JamiEvent.MessageReceived>()
+            .onEach { event -> showMessageNotification(event.message) }
+            .launchIn(serviceScope)
+    }
+
+    private suspend fun showMessageNotification(message: ChatMessage) {
+        val contactDao = (applicationContext as MeshlyApplication).database.contactDao()
+        val displayName = contactDao.getContactById(message.senderJamiId)?.displayName ?: message.senderJamiId
+
+        val contentIntent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(MainActivity.EXTRA_DEEPLINK_JAMI_ID, message.senderJamiId)
+            putExtra(MainActivity.EXTRA_DEEPLINK_DISPLAY_NAME, displayName)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            message.senderJamiId.hashCode(),
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_MESSAGE_ID)
+            .setContentTitle(displayName)
+            .setContentText(message.text.ifBlank { getString(R.string.notification_message_attachment_fallback) })
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        getSystemService(NotificationManager::class.java).notify(message.senderJamiId.hashCode(), notification)
+    }
+
     private fun createNotification(): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -110,8 +158,8 @@ class JamiDaemonService : Service() {
         )
 
         return NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_DAEMON_ID)
-            .setContentTitle("Meshly P2P Core")
-            .setContentText("Connected to decentralized OpenDHT network")
+            .setContentTitle(getString(R.string.notification_daemon_title))
+            .setContentText(getString(R.string.notification_daemon_text))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

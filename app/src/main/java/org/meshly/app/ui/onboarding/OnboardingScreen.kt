@@ -20,11 +20,15 @@
 
 package org.meshly.app.ui.onboarding
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Button
@@ -44,9 +48,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.meshly.app.R
+import org.meshly.app.ui.theme.MeshWordmarkStyle
 import org.meshly.app.ui.viewmodel.OnboardingViewModel
 
 private enum class OnboardingStep {
@@ -98,9 +106,10 @@ fun OnboardingScreen(
                     onBack = { step = OnboardingStep.WELCOME }
                 )
                 OnboardingStep.IMPORT_ACCOUNT -> ImportAccountStep(
-                    onImport = { payload ->
-                        viewModel.importAccount(payload)
-                        onOnboardingComplete()
+                    onImport = { payload, password ->
+                        val success = viewModel.importAccount(payload, password)
+                        if (success) onOnboardingComplete()
+                        success
                     },
                     onBack = { step = OnboardingStep.WELCOME }
                 )
@@ -111,74 +120,106 @@ fun OnboardingScreen(
 
 @Composable
 private fun WelcomeStep(onCreateAccount: () -> Unit, onImportAccount: () -> Unit) {
-    Icon(
-        imageVector = Icons.Filled.Forum,
-        contentDescription = null,
-        modifier = Modifier.padding(bottom = 16.dp),
-        tint = MaterialTheme.colorScheme.primary
-    )
-    Text("Meshly", style = MaterialTheme.typography.headlineMedium)
+    Box(
+        modifier = Modifier
+            .size(88.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Forum,
+            contentDescription = null,
+            modifier = Modifier.size(44.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
     Text(
-        "Serverless, end-to-end encrypted P2P messaging and calls, powered by GNU Jami.",
+        "Meshly",
+        style = MeshWordmarkStyle,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 20.dp)
+    )
+    Text(
+        stringResource(R.string.onboarding_tagline),
         style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp, bottom = 36.dp)
     )
     Button(onClick = onCreateAccount, modifier = Modifier.fillMaxWidth()) {
-        Text("Create a new Jami ID")
+        Text(stringResource(R.string.action_create_new_id))
     }
     TextButton(onClick = onImportAccount, modifier = Modifier.padding(top = 8.dp)) {
-        Text("Import an existing account")
+        Text(stringResource(R.string.action_import_existing))
     }
 }
 
 @Composable
 private fun CreateAccountStep(onCreate: (String) -> Unit, onBack: () -> Unit) {
     var username by remember { mutableStateOf("") }
-    Text("Choose a username (optional)", style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.choose_username_title), style = MaterialTheme.typography.titleMedium)
     Text(
-        "Your Jami ID keypair will be generated on-device. Registering a username lets others find you by name instead of the raw ID.",
+        stringResource(R.string.choose_username_desc),
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(vertical = 12.dp)
     )
     OutlinedTextField(
         value = username,
         onValueChange = { username = it },
-        label = { Text("Username") },
+        label = { Text(stringResource(R.string.label_username)) },
         modifier = Modifier.fillMaxWidth()
     )
     Button(
         onClick = { onCreate(username) },
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
     ) {
-        Text("Generate Jami ID")
+        Text(stringResource(R.string.action_generate_id))
     }
     TextButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) {
-        Text("Back")
+        Text(stringResource(R.string.action_back))
     }
 }
 
 @Composable
-private fun ImportAccountStep(onImport: (String) -> Unit, onBack: () -> Unit) {
-    var archivePath by remember { mutableStateOf("") }
-    Text("Import account archive", style = MaterialTheme.typography.titleMedium)
+private fun ImportAccountStep(onImport: (payload: String, password: String) -> Boolean, onBack: () -> Unit) {
+    var archivePayload by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var importFailed by remember { mutableStateOf(false) }
+
+    Text(stringResource(R.string.import_account_title), style = MaterialTheme.typography.titleMedium)
     Text(
-        "Paste the path to a password-protected account export (.gz) created from another device.",
+        stringResource(R.string.import_account_desc),
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(vertical = 12.dp)
     )
     OutlinedTextField(
-        value = archivePath,
-        onValueChange = { archivePath = it },
-        label = { Text("Archive path") },
+        value = archivePayload,
+        onValueChange = { archivePayload = it; importFailed = false },
+        label = { Text(stringResource(R.string.label_backup_archive)) },
         modifier = Modifier.fillMaxWidth()
     )
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it; importFailed = false },
+        label = { Text(stringResource(R.string.label_password)) },
+        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+    )
+    if (importFailed) {
+        Text(
+            stringResource(R.string.import_failed),
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
     Button(
-        onClick = { onImport(archivePath) },
+        onClick = { importFailed = !onImport(archivePayload, password) },
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
     ) {
-        Text("Import")
+        Text(stringResource(R.string.action_import))
     }
     OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) {
-        Text("Back")
+        Text(stringResource(R.string.action_back))
     }
 }

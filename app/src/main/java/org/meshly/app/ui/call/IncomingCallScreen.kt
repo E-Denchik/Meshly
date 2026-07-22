@@ -25,7 +25,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
@@ -40,12 +42,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.meshly.app.R
+import org.meshly.app.data.model.CallType
+import org.meshly.app.ui.components.Avatar
 
 @Composable
 fun IncomingCallScreen(
+    peerJamiId: String,
     peerDisplayName: String,
-    callTypeLabel: String,
+    callType: CallType,
     onAccept: () -> Unit,
     onReject: () -> Unit
 ) {
@@ -62,18 +69,23 @@ fun IncomingCallScreen(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(
-                    modifier = Modifier.padding(top = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        "Incoming $callTypeLabel call",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
+                    Avatar(name = peerDisplayName, seed = peerJamiId, size = 128.dp)
+                    Spacer(Modifier.height(24.dp))
                     Text(
                         peerDisplayName,
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color.White
+                    )
+                    Text(
+                        stringResource(
+                            if (callType == CallType.VIDEO) R.string.incoming_video_call else R.string.incoming_audio_call
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
 
@@ -87,7 +99,7 @@ fun IncomingCallScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Icon(Icons.Filled.CallEnd, contentDescription = "Reject")
+                        Icon(Icons.Filled.CallEnd, contentDescription = stringResource(R.string.content_desc_reject))
                     }
                     FilledIconButton(
                         onClick = onAccept,
@@ -95,7 +107,7 @@ fun IncomingCallScreen(
                             containerColor = MaterialTheme.colorScheme.tertiary
                         )
                     ) {
-                        Icon(Icons.Filled.Call, contentDescription = "Accept")
+                        Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_accept))
                     }
                 }
             }

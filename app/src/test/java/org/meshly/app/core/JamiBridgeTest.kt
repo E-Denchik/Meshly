@@ -66,8 +66,10 @@ class JamiBridgeTest {
     @Test
     fun `sendTextMessage maps to an outgoing sent message`() {
         val peerId = "jami:peer-${UUID.randomUUID()}"
-        val message = bridge.sendTextMessage(peerId, "hello mesh")
+        val messageId = UUID.randomUUID().toString()
+        val message = bridge.sendTextMessage(messageId, peerId, "hello mesh")
 
+        assertEquals(messageId, message.id)
         assertEquals(peerId, message.conversationId)
         assertEquals("hello mesh", message.text)
         assertEquals(MessageStatus.SENT, message.status)
@@ -111,5 +113,17 @@ class JamiBridgeTest {
 
         val frontCamera = bridge.flipCamera()
         assertFalse(frontCamera)
+    }
+
+    @Test
+    fun `logout clears the current account and any active call`() {
+        bridge.createAccount("erin-${UUID.randomUUID()}")
+        val peerId = "jami:peer-${UUID.randomUUID()}"
+        bridge.placeCall(peerId, "Frank", CallType.AUDIO)
+
+        bridge.logout()
+
+        assertNull(bridge.currentAccount.value)
+        assertNull(bridge.activeCall.value)
     }
 }

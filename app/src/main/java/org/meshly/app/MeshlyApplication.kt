@@ -55,14 +55,24 @@ class MeshlyApplication : Application() {
                 description = getString(R.string.notification_channel_call_desc)
             }
 
+            val messageChannel = NotificationChannel(
+                CHANNEL_MESSAGE_ID,
+                getString(R.string.notification_channel_message_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.notification_channel_message_desc)
+            }
+
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(daemonChannel)
             notificationManager.createNotificationChannel(callChannel)
+            notificationManager.createNotificationChannel(messageChannel)
         }
     }
 
     companion object {
         const val CHANNEL_DAEMON_ID = "meshly_daemon_channel"
         const val CHANNEL_CALL_ID = "meshly_call_channel"
+        const val CHANNEL_MESSAGE_ID = "meshly_message_channel"
     }
 }

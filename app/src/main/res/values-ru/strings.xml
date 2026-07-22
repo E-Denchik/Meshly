@@ -1,0 +1,150 @@
+<resources>
+    <string name="app_name">Meshly</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_daemon_name">Подключение Meshly P2P</string>
+    <string name="notification_channel_daemon_desc">Поддерживает присутствие в децентрализованной P2P-сети</string>
+    <string name="notification_channel_call_name">Звонки Meshly</string>
+    <string name="notification_channel_call_desc">Уведомления об активных аудио- и видеозвонках</string>
+    <string name="notification_channel_message_name">Сообщения Meshly</string>
+    <string name="notification_channel_message_desc">Уведомления о новых личных сообщениях</string>
+
+    <!-- Foreground service / notification content -->
+    <string name="notification_daemon_title">Ядро P2P Meshly</string>
+    <string name="notification_daemon_text">Подключено к децентрализованной сети OpenDHT</string>
+    <string name="notification_incoming_audio_call">Входящий аудиозвонок</string>
+    <string name="notification_incoming_video_call">Входящий видеозвонок</string>
+    <string name="notification_message_attachment_fallback">Отправлено вложение</string>
+    <string name="call_notification_title_audio">Аудиозвонок Meshly</string>
+    <string name="call_notification_title_video">Видеозвонок Meshly</string>
+    <string name="call_notification_text">Звонок с %1$s</string>
+
+    <!-- Call state labels -->
+    <string name="call_state_dialing">Набор номера…</string>
+    <string name="call_state_incoming">Входящий вызов</string>
+    <string name="call_state_connecting">Подключение…</string>
+    <string name="call_state_connected">Соединено</string>
+    <string name="call_state_ended">Звонок завершён</string>
+
+    <!-- Incoming call screen -->
+    <string name="incoming_audio_call">Входящий аудиозвонок</string>
+    <string name="incoming_video_call">Входящий видеозвонок</string>
+    <string name="content_desc_accept">Принять</string>
+    <string name="content_desc_reject">Отклонить</string>
+
+    <!-- In-call screen -->
+    <string name="content_desc_toggle_mute">Включить/выключить микрофон</string>
+    <string name="content_desc_toggle_camera">Включить/выключить камеру</string>
+    <string name="content_desc_flip_camera">Переключить камеру</string>
+    <string name="content_desc_toggle_screen_share">Включить/выключить демонстрацию экрана</string>
+    <string name="content_desc_hang_up">Завершить звонок</string>
+    <string name="video_preview_placeholder">Область предпросмотра видео (Фаза 2: видеовывод libjami)</string>
+    <string name="screen_share_placeholder">Демонстрация экрана (Фаза 2: MediaProjection + видеовывод libjami)</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_chats">Чаты</string>
+    <string name="tab_contacts">Контакты</string>
+    <string name="tab_calls">Звонки</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Chats list -->
+    <string name="chats_title">Чаты</string>
+    <string name="chats_empty">Пока нет ни одного разговора. Добавьте контакт, чтобы начать общение.</string>
+    <string name="content_desc_online">В сети</string>
+
+    <!-- Calls tab -->
+    <string name="calls_title">Звонки</string>
+    <string name="calls_empty">Добавьте подтверждённый контакт, чтобы позвонить.</string>
+    <string name="ongoing_audio_call_with">Идёт аудиозвонок с %1$s</string>
+    <string name="ongoing_video_call_with">Идёт видеозвонок с %1$s</string>
+    <string name="content_desc_audio_call">Аудиозвонок</string>
+    <string name="content_desc_video_call">Видеозвонок</string>
+
+    <!-- Contacts screen -->
+    <string name="contacts_title">Контакты</string>
+    <string name="contact_search_label">Jami ID или имя пользователя</string>
+    <string name="contact_search_error_invalid">Введите полный Jami ID (jami: и 40 шестнадцатеричных символов) или корректное имя пользователя</string>
+    <string name="contact_search_error_duplicate">Уже есть в контактах или заявка уже отправлена</string>
+    <string name="content_desc_add_contact">Добавить контакт</string>
+    <string name="tab_contacts_count">Контакты (%1$d)</string>
+    <string name="tab_requests_count">Заявки (%1$d)</string>
+    <string name="tab_blocked_count">Заблокированные (%1$d)</string>
+    <string name="contacts_empty">Пока нет контактов.</string>
+    <string name="requests_empty">Нет ожидающих заявок.</string>
+    <string name="blocked_empty">Нет заблокированных контактов.</string>
+    <string name="content_desc_more_options">Дополнительные действия</string>
+    <string name="action_block">Заблокировать</string>
+    <string name="action_remove">Удалить</string>
+    <string name="action_unblock">Разблокировать</string>
+
+    <!-- Chat screen -->
+    <string name="content_desc_attach_file">Прикрепить файл</string>
+    <string name="content_desc_remove_attachment">Удалить вложение</string>
+    <string name="message_placeholder">Сообщение</string>
+    <string name="content_desc_send">Отправить</string>
+    <string name="attachment_fallback_name">Вложение</string>
+    <string name="content_desc_attachment">Вложение</string>
+    <string name="message_status_sending">Отправка</string>
+    <string name="message_status_sent">Отправлено</string>
+    <string name="message_status_delivered">Доставлено</string>
+    <string name="message_status_read">Прочитано</string>
+    <string name="message_status_failed">Не удалось отправить</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Бессерверные, сквозно зашифрованные P2P-сообщения и звонки на основе GNU Jami.</string>
+    <string name="action_create_new_id">Создать новый Jami ID</string>
+    <string name="action_import_existing">Импортировать существующий аккаунт</string>
+    <string name="choose_username_title">Выберите имя пользователя (необязательно)</string>
+    <string name="choose_username_desc">Пара ключей вашего Jami ID будет сгенерирована на устройстве. Регистрация имени пользователя позволяет другим находить вас по имени, а не по исходному ID.</string>
+    <string name="label_username">Имя пользователя</string>
+    <string name="action_generate_id">Сгенерировать Jami ID</string>
+    <string name="action_back">Назад</string>
+    <string name="import_account_title">Импорт архива аккаунта</string>
+    <string name="import_account_desc">Вставьте защищённую паролем резервную копию аккаунта, созданную на другом устройстве (в Настройках там — «Экспорт аккаунта»), затем введите пароль от неё.</string>
+    <string name="label_backup_archive">Архив резервной копии</string>
+    <string name="label_password">Пароль</string>
+    <string name="import_failed">Не удалось выполнить импорт: архив повреждён или пароль неверен.</string>
+    <string name="action_import">Импортировать</string>
+
+    <!-- Export account dialog -->
+    <string name="export_account_title">Экспорт аккаунта</string>
+    <string name="export_account_warning">Защитите резервную копию ключей паролем. Любой, у кого есть этот архив и пароль, сможет выдать себя за ваш Jami ID.</string>
+    <string name="label_confirm_password">Подтвердите пароль</string>
+    <string name="export_ready_hint">Архив готов. Скопируйте его и пароль, чтобы восстановить аккаунт на другом устройстве:</string>
+    <string name="action_export">Экспортировать</string>
+    <string name="action_close">Закрыть</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Настройки</string>
+    <string name="section_account">Аккаунт</string>
+    <string name="label_no_username">Имя пользователя не зарегистрировано</string>
+    <string name="export_account_item_title">Экспорт аккаунта</string>
+    <string name="export_account_item_desc">Защищённая паролем резервная копия ключей вашего Jami ID</string>
+    <string name="section_network">Сеть</string>
+    <string name="upnp_title">UPnP</string>
+    <string name="upnp_desc">Автоматическая настройка портов маршрутизатора для прямых P2P-соединений</string>
+    <string name="turn_title">TURN-ретранслятор</string>
+    <string name="turn_desc">Резервный ретранслятор на случай, если прямое P2P-соединение невозможно</string>
+    <string name="bootstrap_nodes_title">Bootstrap-узлы DHT</string>
+    <string name="bootstrap_nodes_desc">Точки входа в сеть OpenDHT. Оставьте не менее двух независимых узлов, чтобы приложение продолжало работать при отказе одного из них.</string>
+    <string name="content_desc_remove_node">Удалить узел</string>
+    <string name="label_host_port">адрес:порт</string>
+    <string name="content_desc_add_node">Добавить узел</string>
+    <string name="section_diagnostics">Диагностика</string>
+    <string name="export_logs_title">Экспорт диагностических журналов</string>
+    <string name="export_logs_desc">Собрать журналы демона для устранения проблем с подключением</string>
+    <string name="export_logs_failed">Не удалось экспортировать диагностические журналы</string>
+    <string name="share_logs_chooser_title">Поделиться диагностическими журналами</string>
+    <string name="section_background">Работа в фоне</string>
+    <string name="battery_opt_title">Отключить оптимизацию батареи</string>
+    <string name="battery_opt_desc">На MIUI, OneUI и других прошивках отключение оптимизации батареи для Meshly не даёт системе останавливать фоновую P2P-службу, поэтому вы продолжаете получать сообщения и звонки.</string>
+    <string name="battery_opt_action_disable">Отключить</string>
+    <string name="battery_opt_action_already">Уже отключено</string>
+
+    <!-- Logout -->
+    <string name="action_logout">Выйти</string>
+    <string name="logout_item_desc">Выйти из этого аккаунта на этом устройстве</string>
+    <string name="logout_confirm_title">Выйти из аккаунта?</string>
+    <string name="logout_confirm_message">Без архива резервной копии и пароля от неё вы не сможете снова войти в этот аккаунт ни на этом, ни на другом устройстве. Локальные чаты и контакты на этом устройстве также будут удалены.</string>
+    <string name="action_cancel">Отмена</string>
+</resources>

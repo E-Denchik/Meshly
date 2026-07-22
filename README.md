@@ -1,5 +1,8 @@
 # Meshly
 
+[![Android CI](https://github.com/E-Denchik/Meshly/actions/workflows/android-ci.yml/badge.svg)](https://github.com/E-Denchik/Meshly/actions/workflows/android-ci.yml)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 Meshly is a serverless, end-to-end encrypted peer-to-peer messenger and calling app for
 Android, built on top of [GNU Jami](https://jami.net)'s core engine (`libjami` /
 `jami-daemon`). No central server: accounts, presence, messaging, and calls are all
@@ -21,6 +24,18 @@ Right now the app runs entirely on a **mock engine** (`org.meshly.app.core.JamiB
 account creation, contacts, messaging, and calls are all simulated in-process so the
 full UI is exercisable without the native daemon. This is intentional — see
 [Architecture](#architecture) below.
+
+**Design system**: `ui/theme/` defines a dedicated Meshly color palette (light + dark, full
+Material 3 tonal roles rather than a partial scheme), rounder shapes, and light typography
+tweaks. `ui/components/` has the shared building blocks (`Avatar`, `EmptyState`) reused across
+the chat/contacts/calls lists and the in-call screens so they read as one consistent system
+instead of ad hoc per-screen styling.
+
+**Account lifecycle**: Settings has a "Log out" action (with a confirmation dialog, since it's
+irreversible without a previously exported backup archive+password) that clears the local
+identity and chat/contact history and returns to onboarding, where a different identity can be
+created or imported. There's intentionally no separate "login" screen — on this decentralized
+model, restoring an identity *is* onboarding's "Import an existing account" flow.
 
 ## Architecture
 
@@ -101,11 +116,67 @@ On MIUI/HyperOS devices, USB installs may be silently rejected
 (`INSTALL_FAILED_USER_RESTRICTED`) unless "Install via USB" is enabled in Developer
 options.
 
+### Continuous integration
+
+`.github/workflows/android-ci.yml` runs `./gradlew test assembleDebug` on every push/PR
+to `main` using GitHub's free hosted runners, and uploads the resulting debug APK and
+unit test reports as workflow artifacts. It checks out without submodules, since `:app`
+doesn't depend on `:daemon`/`native/upstream/jami-daemon` (Phase 2, not built yet).
+
+## Distribution
+
+Per the project's goal of not depending on a single distribution channel:
+
+- **F-Droid**: `fastlane/metadata/android/en-US/` holds the store listing (title, short/
+  full description, per-version changelog) in the format both F-Droid and Google Play's
+  `fastlane supply` expect. Actual F-Droid inclusion additionally requires a build recipe
+  merged into the separate [`fdroiddata`](https://gitlab.com/fdroid/fdroiddata) repo,
+  which hasn't been submitted yet — this repo only prepares the metadata and a
+  reproducible Gradle build.
+- **Direct APK**: the CI workflow above produces a debug APK on every build; a signed
+  release APK can be attached to GitHub Releases once a release signing key exists
+  (deliberately not part of this repo — see `.gitignore`'s `*.jks`/`*.keystore` rule).
+- **Google Play**: optional, not set up.
+
+## Localization
+
+All user-facing UI text is externalized to Android string resources
+(`app/src/main/res/values*/strings.xml`), not hardcoded in Compose. The app ships with:
+
+| Locale | Resource folder |
+|---|---|
+| English (default) | `values/` |
+| Russian | `values-ru/` |
+| French | `values-fr/` |
+| Turkish | `values-tr/` |
+| Arabic | `values-ar/` |
+| Chinese | `values-zh/` |
+
+Android picks the matching translation automatically based on the device's system
+language, falling back to English otherwise — no in-app language switcher is needed, and
+this works on every supported API level (minSdk 24) purely from the resource-qualifier
+folder structure above. Locale folders intentionally use bare language qualifiers (`values-ru`,
+not `values-ru-rRU`) so any regional variant of a supported language matches - e.g. a device
+set to Chinese in any region resolves to `values-zh`, not just `zh-CN` specifically.
+
+`app/src/main/res/xml/locales_config.xml`, wired via `android:localeConfig` in
+`AndroidManifest.xml`, additionally declares these same locales for Android 13+'s per-app
+language feature - it lets a user override Meshly's language independently of the device's
+system language from Settings > Apps > Meshly > Language, without needing an in-app language
+switcher UI. On API < 33 this is simply ignored; the base auto-detection above still applies.
+
+Product/technical terms (`Jami ID`, `OpenDHT`, `UPnP`, `TURN`, `libjami`, `GNU Jami`,
+`MediaProjection`) are intentionally left untranslated, matching how they're used in
+Jami's own upstream clients. New user-facing strings should be added to `values/` first
+and then mirrored into every other locale folder to keep them in sync — nothing enforces
+this automatically today.
+
 ## License
 
 Meshly links against `libjami`, which is GPLv3. Every source file in this repo carries
-a GPLv3 header accordingly — see [`COPYING`](native/upstream/jami-daemon/COPYING) (via
-the submodule) for the full license text.
+a GPLv3 header accordingly — see [`LICENSE`](LICENSE) at the repo root for the full
+license text (copied verbatim from the `jami-daemon` submodule's own `COPYING`, so it's
+available even for a shallow checkout without submodules, e.g. in CI).
 
 ## Networking defaults
 

@@ -20,21 +20,17 @@
 
 package org.meshly.app.ui.chats
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,13 +39,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.meshly.app.R
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
+import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.EmptyState
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
 @Composable
@@ -63,22 +62,19 @@ fun ChatsListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Chats") }) }
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.chats_title)) }) }
     ) { padding ->
         if (conversations.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "No conversations yet. Add a contact to start chatting.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            EmptyState(
+                icon = Icons.Filled.Forum,
+                text = stringResource(R.string.chats_empty),
+                modifier = Modifier.padding(padding)
+            )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(conversations, key = { it.jamiId }) { contact ->
                     ConversationRow(contact) { onOpenChat(contact.jamiId, contact.displayName) }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 }
             }
         }
@@ -87,37 +83,26 @@ fun ChatsListScreen(
 
 @Composable
 private fun ConversationRow(contact: Contact, onClick: () -> Unit) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(contact.displayName.take(1).uppercase())
-        }
-        Column(modifier = Modifier.padding(top = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-                if (contact.presence == PresenceStatus.ONLINE) {
-                    Icon(
-                        imageVector = Icons.Filled.Circle,
-                        contentDescription = "Online",
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.padding(start = 6.dp).size(10.dp)
-                    )
-                }
-            }
+        Avatar(
+            name = contact.displayName,
+            seed = contact.jamiId,
+            showOnlineIndicator = contact.presence == PresenceStatus.ONLINE,
+            onlineContentDescription = stringResource(R.string.content_desc_online)
+        )
+        Column(modifier = Modifier.padding(start = 12.dp)) {
+            Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
             Text(
                 contact.jamiId,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
         }
     }

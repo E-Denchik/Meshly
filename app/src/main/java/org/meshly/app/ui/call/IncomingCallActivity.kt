@@ -52,8 +52,9 @@ class IncomingCallActivity : ComponentActivity() {
 
                 if (!accepted) {
                     IncomingCallScreen(
+                        peerJamiId = peerJamiId,
                         peerDisplayName = peerDisplayName,
-                        callTypeLabel = callType.name.lowercase(),
+                        callType = callType,
                         onAccept = {
                             callViewModel.acceptCall(callId)
                             accepted = true

@@ -21,29 +21,50 @@
 package org.meshly.app.ui.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.meshly.app.data.model.CallSession
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.repository.CallRepository
+import org.meshly.app.service.CallService
 
 class CallViewModel(application: Application) : AndroidViewModel(application) {
     private val callRepository = CallRepository()
     val activeCall: StateFlow<CallSession?> = callRepository.activeCall
 
     fun placeCall(peerJamiId: String, peerDisplayName: String, type: CallType): CallSession {
-        return callRepository.placeCall(peerJamiId, peerDisplayName, type)
+        val session = callRepository.placeCall(peerJamiId, peerDisplayName, type)
+        startCallService(session)
+        return session
     }
 
     fun acceptCall(callId: String) {
         callRepository.acceptCall(callId)
+        activeCall.value?.let { startCallService(it) }
     }
 
     fun hangUpCall(callId: String) {
         callRepository.hangUpCall(callId)
+        stopCallService()
     }
 
     fun toggleMute() = callRepository.toggleMute()
     fun toggleCamera() = callRepository.toggleCamera()
     fun flipCamera() = callRepository.flipCamera()
+    fun toggleScreenShare() = callRepository.toggleScreenShare()
+
+    private fun startCallService(session: CallSession) {
+        val context = getApplication<Application>()
+        val intent = Intent(context, CallService::class.java).apply {
+            putExtra(CallService.EXTRA_PEER_NAME, session.peerDisplayName)
+            putExtra(CallService.EXTRA_CALL_TYPE, session.callType.name)
+        }
+        context.startForegroundService(intent)
+    }
+
+    private fun stopCallService() {
+        val context = getApplication<Application>()
+        context.stopService(Intent(context, CallService::class.java))
+    }
 }

@@ -1,0 +1,150 @@
+<resources>
+    <string name="app_name">Meshly</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_daemon_name">Connexion P2P Meshly</string>
+    <string name="notification_channel_daemon_desc">Maintient la présence sur le réseau P2P décentralisé</string>
+    <string name="notification_channel_call_name">Appels Meshly</string>
+    <string name="notification_channel_call_desc">Notifications des appels audio et vidéo en cours</string>
+    <string name="notification_channel_message_name">Messages Meshly</string>
+    <string name="notification_channel_message_desc">Notifications de nouveaux messages directs</string>
+
+    <!-- Foreground service / notification content -->
+    <string name="notification_daemon_title">Cœur P2P Meshly</string>
+    <string name="notification_daemon_text">Connecté au réseau OpenDHT décentralisé</string>
+    <string name="notification_incoming_audio_call">Appel audio entrant</string>
+    <string name="notification_incoming_video_call">Appel vidéo entrant</string>
+    <string name="notification_message_attachment_fallback">A envoyé une pièce jointe</string>
+    <string name="call_notification_title_audio">Appel audio Meshly</string>
+    <string name="call_notification_title_video">Appel vidéo Meshly</string>
+    <string name="call_notification_text">Appel en cours avec %1$s</string>
+
+    <!-- Call state labels -->
+    <string name="call_state_dialing">Appel en cours…</string>
+    <string name="call_state_incoming">Appel entrant</string>
+    <string name="call_state_connecting">Connexion…</string>
+    <string name="call_state_connected">Connecté</string>
+    <string name="call_state_ended">Appel terminé</string>
+
+    <!-- Incoming call screen -->
+    <string name="incoming_audio_call">Appel audio entrant</string>
+    <string name="incoming_video_call">Appel vidéo entrant</string>
+    <string name="content_desc_accept">Accepter</string>
+    <string name="content_desc_reject">Refuser</string>
+
+    <!-- In-call screen -->
+    <string name="content_desc_toggle_mute">Activer/désactiver le micro</string>
+    <string name="content_desc_toggle_camera">Activer/désactiver la caméra</string>
+    <string name="content_desc_flip_camera">Changer de caméra</string>
+    <string name="content_desc_toggle_screen_share">Activer/désactiver le partage d\'écran</string>
+    <string name="content_desc_hang_up">Raccrocher</string>
+    <string name="video_preview_placeholder">Aperçu vidéo (Phase 2 : sortie vidéo libjami)</string>
+    <string name="screen_share_placeholder">Partage d\'écran en cours (Phase 2 : MediaProjection + sortie vidéo libjami)</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_chats">Discussions</string>
+    <string name="tab_contacts">Contacts</string>
+    <string name="tab_calls">Appels</string>
+    <string name="tab_settings">Paramètres</string>
+
+    <!-- Chats list -->
+    <string name="chats_title">Discussions</string>
+    <string name="chats_empty">Aucune conversation pour le moment. Ajoutez un contact pour commencer à discuter.</string>
+    <string name="content_desc_online">En ligne</string>
+
+    <!-- Calls tab -->
+    <string name="calls_title">Appels</string>
+    <string name="calls_empty">Ajoutez un contact confirmé pour passer un appel.</string>
+    <string name="ongoing_audio_call_with">Appel audio en cours avec %1$s</string>
+    <string name="ongoing_video_call_with">Appel vidéo en cours avec %1$s</string>
+    <string name="content_desc_audio_call">Appel audio</string>
+    <string name="content_desc_video_call">Appel vidéo</string>
+
+    <!-- Contacts screen -->
+    <string name="contacts_title">Contacts</string>
+    <string name="contact_search_label">ID Jami ou nom d\'utilisateur</string>
+    <string name="contact_search_error_invalid">Saisissez un ID Jami complet (jami: suivi de 40 caractères hexadécimaux) ou un nom d\'utilisateur valide</string>
+    <string name="contact_search_error_duplicate">Déjà dans vos contacts ou demande en attente</string>
+    <string name="content_desc_add_contact">Ajouter un contact</string>
+    <string name="tab_contacts_count">Contacts (%1$d)</string>
+    <string name="tab_requests_count">Demandes (%1$d)</string>
+    <string name="tab_blocked_count">Bloqués (%1$d)</string>
+    <string name="contacts_empty">Aucun contact pour le moment.</string>
+    <string name="requests_empty">Aucune demande en attente.</string>
+    <string name="blocked_empty">Aucun contact bloqué.</string>
+    <string name="content_desc_more_options">Plus d\'options</string>
+    <string name="action_block">Bloquer</string>
+    <string name="action_remove">Supprimer</string>
+    <string name="action_unblock">Débloquer</string>
+
+    <!-- Chat screen -->
+    <string name="content_desc_attach_file">Joindre un fichier</string>
+    <string name="content_desc_remove_attachment">Supprimer la pièce jointe</string>
+    <string name="message_placeholder">Message</string>
+    <string name="content_desc_send">Envoyer</string>
+    <string name="attachment_fallback_name">Pièce jointe</string>
+    <string name="content_desc_attachment">Pièce jointe</string>
+    <string name="message_status_sending">Envoi…</string>
+    <string name="message_status_sent">Envoyé</string>
+    <string name="message_status_delivered">Distribué</string>
+    <string name="message_status_read">Lu</string>
+    <string name="message_status_failed">Échec de l\'envoi</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Messagerie et appels P2P chiffrés de bout en bout, sans serveur, propulsés par GNU Jami.</string>
+    <string name="action_create_new_id">Créer un nouvel ID Jami</string>
+    <string name="action_import_existing">Importer un compte existant</string>
+    <string name="choose_username_title">Choisissez un nom d\'utilisateur (facultatif)</string>
+    <string name="choose_username_desc">La paire de clés de votre ID Jami sera générée sur l\'appareil. Enregistrer un nom d\'utilisateur permet aux autres de vous trouver par votre nom plutôt que par l\'ID brut.</string>
+    <string name="label_username">Nom d\'utilisateur</string>
+    <string name="action_generate_id">Générer l\'ID Jami</string>
+    <string name="action_back">Retour</string>
+    <string name="import_account_title">Importer une archive de compte</string>
+    <string name="import_account_desc">Collez la sauvegarde de compte protégée par mot de passe créée sur un autre appareil (dans Paramètres, Exporter le compte), puis saisissez son mot de passe.</string>
+    <string name="label_backup_archive">Archive de sauvegarde</string>
+    <string name="label_password">Mot de passe</string>
+    <string name="import_failed">Import impossible : l\'archive est invalide ou le mot de passe est incorrect.</string>
+    <string name="action_import">Importer</string>
+
+    <!-- Export account dialog -->
+    <string name="export_account_title">Exporter le compte</string>
+    <string name="export_account_warning">Protégez la sauvegarde de vos clés par un mot de passe. Quiconque possède cette archive et ce mot de passe peut usurper votre ID Jami.</string>
+    <string name="label_confirm_password">Confirmer le mot de passe</string>
+    <string name="export_ready_hint">Archive prête. Copiez-la ainsi que le mot de passe pour restaurer le compte sur un autre appareil :</string>
+    <string name="action_export">Exporter</string>
+    <string name="action_close">Fermer</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Paramètres</string>
+    <string name="section_account">Compte</string>
+    <string name="label_no_username">Aucun nom d\'utilisateur enregistré</string>
+    <string name="export_account_item_title">Exporter le compte</string>
+    <string name="export_account_item_desc">Sauvegarde protégée par mot de passe des clés de votre ID Jami</string>
+    <string name="section_network">Réseau</string>
+    <string name="upnp_title">UPnP</string>
+    <string name="upnp_desc">Redirection automatique des ports du routeur pour des connexions P2P directes</string>
+    <string name="turn_title">Relais TURN</string>
+    <string name="turn_desc">Relais de secours lorsque la connexion P2P directe échoue</string>
+    <string name="bootstrap_nodes_title">Nœuds d\'amorçage DHT</string>
+    <string name="bootstrap_nodes_desc">Points d\'entrée dans le réseau OpenDHT. Conservez au moins deux nœuds indépendants pour que l\'application survive à la panne de l\'un d\'eux.</string>
+    <string name="content_desc_remove_node">Supprimer le nœud</string>
+    <string name="label_host_port">hôte:port</string>
+    <string name="content_desc_add_node">Ajouter un nœud</string>
+    <string name="section_diagnostics">Diagnostic</string>
+    <string name="export_logs_title">Exporter les journaux de diagnostic</string>
+    <string name="export_logs_desc">Regrouper les journaux du démon pour résoudre les problèmes de connectivité</string>
+    <string name="export_logs_failed">Échec de l\'export des journaux de diagnostic</string>
+    <string name="share_logs_chooser_title">Partager les journaux de diagnostic</string>
+    <string name="section_background">Présence en arrière-plan</string>
+    <string name="battery_opt_title">Désactiver l\'optimisation de la batterie</string>
+    <string name="battery_opt_desc">Sur MIUI, OneUI et autres surcouches, désactiver l\'optimisation de la batterie pour Meshly maintient le service P2P en arrière-plan actif, afin que vous continuiez à recevoir messages et appels.</string>
+    <string name="battery_opt_action_disable">Désactiver</string>
+    <string name="battery_opt_action_already">Déjà désactivée</string>
+
+    <!-- Logout -->
+    <string name="action_logout">Se déconnecter</string>
+    <string name="logout_item_desc">Se déconnecter de ce compte sur cet appareil</string>
+    <string name="logout_confirm_title">Se déconnecter ?</string>
+    <string name="logout_confirm_message">Sans archive de sauvegarde et son mot de passe, vous ne pourrez plus vous reconnecter à ce compte, sur cet appareil ou un autre. Les discussions et contacts locaux de cet appareil seront également supprimés.</string>
+    <string name="action_cancel">Annuler</string>
+</resources>

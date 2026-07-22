@@ -42,6 +42,12 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         initialValue = emptyList()
     )
 
+    init {
+        viewModelScope.launch {
+            contactRepository.seedDemoIncomingRequestIfEmpty()
+        }
+    }
+
     fun addContactRequest(jamiId: String, displayName: String) {
         viewModelScope.launch {
             contactRepository.addContactRequest(jamiId, displayName)
@@ -57,6 +63,18 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     fun removeContact(jamiId: String) {
         viewModelScope.launch {
             contactRepository.removeContact(jamiId)
+        }
+    }
+
+    fun blockContact(jamiId: String) {
+        viewModelScope.launch {
+            contactRepository.blockContact(jamiId)
+        }
+    }
+
+    fun unblockContact(contact: Contact) {
+        viewModelScope.launch {
+            contactRepository.unblockContact(contact)
         }
     }
 }

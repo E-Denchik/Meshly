@@ -1,0 +1,150 @@
+<resources>
+    <string name="app_name">Meshly</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_daemon_name">Meshly P2P 连接</string>
+    <string name="notification_channel_daemon_desc">保持在去中心化 P2P 网络中的在线状态</string>
+    <string name="notification_channel_call_name">Meshly 通话</string>
+    <string name="notification_channel_call_desc">正在进行的语音和视频通话通知</string>
+    <string name="notification_channel_message_name">Meshly 消息</string>
+    <string name="notification_channel_message_desc">新的私信通知</string>
+
+    <!-- Foreground service / notification content -->
+    <string name="notification_daemon_title">Meshly P2P 核心</string>
+    <string name="notification_daemon_text">已连接到去中心化 OpenDHT 网络</string>
+    <string name="notification_incoming_audio_call">语音来电</string>
+    <string name="notification_incoming_video_call">视频来电</string>
+    <string name="notification_message_attachment_fallback">发送了一个附件</string>
+    <string name="call_notification_title_audio">Meshly 语音通话</string>
+    <string name="call_notification_title_video">Meshly 视频通话</string>
+    <string name="call_notification_text">正在与 %1$s 通话</string>
+
+    <!-- Call state labels -->
+    <string name="call_state_dialing">正在拨号…</string>
+    <string name="call_state_incoming">来电</string>
+    <string name="call_state_connecting">正在连接…</string>
+    <string name="call_state_connected">已连接</string>
+    <string name="call_state_ended">通话已结束</string>
+
+    <!-- Incoming call screen -->
+    <string name="incoming_audio_call">语音来电</string>
+    <string name="incoming_video_call">视频来电</string>
+    <string name="content_desc_accept">接听</string>
+    <string name="content_desc_reject">拒接</string>
+
+    <!-- In-call screen -->
+    <string name="content_desc_toggle_mute">切换静音</string>
+    <string name="content_desc_toggle_camera">切换摄像头开关</string>
+    <string name="content_desc_flip_camera">切换前后摄像头</string>
+    <string name="content_desc_toggle_screen_share">切换屏幕共享</string>
+    <string name="content_desc_hang_up">挂断</string>
+    <string name="video_preview_placeholder">视频预览区域(第二阶段:libjami 视频输出)</string>
+    <string name="screen_share_placeholder">正在共享屏幕(第二阶段:MediaProjection + libjami 视频输出)</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_chats">聊天</string>
+    <string name="tab_contacts">联系人</string>
+    <string name="tab_calls">通话</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Chats list -->
+    <string name="chats_title">聊天</string>
+    <string name="chats_empty">还没有任何对话。添加联系人即可开始聊天。</string>
+    <string name="content_desc_online">在线</string>
+
+    <!-- Calls tab -->
+    <string name="calls_title">通话</string>
+    <string name="calls_empty">添加一位已确认的联系人即可发起通话。</string>
+    <string name="ongoing_audio_call_with">正在与 %1$s 进行语音通话</string>
+    <string name="ongoing_video_call_with">正在与 %1$s 进行视频通话</string>
+    <string name="content_desc_audio_call">语音通话</string>
+    <string name="content_desc_video_call">视频通话</string>
+
+    <!-- Contacts screen -->
+    <string name="contacts_title">联系人</string>
+    <string name="contact_search_label">Jami ID 或用户名</string>
+    <string name="contact_search_error_invalid">请输入完整的 Jami ID(jami: 加 40 位十六进制字符)或有效的用户名</string>
+    <string name="contact_search_error_duplicate">已是联系人或已有待处理的请求</string>
+    <string name="content_desc_add_contact">添加联系人</string>
+    <string name="tab_contacts_count">联系人 (%1$d)</string>
+    <string name="tab_requests_count">请求 (%1$d)</string>
+    <string name="tab_blocked_count">已屏蔽 (%1$d)</string>
+    <string name="contacts_empty">暂无联系人。</string>
+    <string name="requests_empty">没有待处理的请求。</string>
+    <string name="blocked_empty">没有已屏蔽的联系人。</string>
+    <string name="content_desc_more_options">更多选项</string>
+    <string name="action_block">屏蔽</string>
+    <string name="action_remove">移除</string>
+    <string name="action_unblock">取消屏蔽</string>
+
+    <!-- Chat screen -->
+    <string name="content_desc_attach_file">添加附件</string>
+    <string name="content_desc_remove_attachment">移除附件</string>
+    <string name="message_placeholder">消息</string>
+    <string name="content_desc_send">发送</string>
+    <string name="attachment_fallback_name">附件</string>
+    <string name="content_desc_attachment">附件</string>
+    <string name="message_status_sending">发送中</string>
+    <string name="message_status_sent">已发送</string>
+    <string name="message_status_delivered">已送达</string>
+    <string name="message_status_read">已读</string>
+    <string name="message_status_failed">发送失败</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">由 GNU Jami 提供支持的无服务器、端到端加密 P2P 消息与通话应用。</string>
+    <string name="action_create_new_id">创建新的 Jami ID</string>
+    <string name="action_import_existing">导入现有账号</string>
+    <string name="choose_username_title">选择用户名(可选)</string>
+    <string name="choose_username_desc">您的 Jami ID 密钥对将在本机生成。注册用户名可让其他人通过名称而不是原始 ID 找到您。</string>
+    <string name="label_username">用户名</string>
+    <string name="action_generate_id">生成 Jami ID</string>
+    <string name="action_back">返回</string>
+    <string name="import_account_title">导入账号存档</string>
+    <string name="import_account_desc">粘贴在另一台设备上创建的、受密码保护的账号备份(在该设备的“设置”中选择“导出账号”),然后输入其密码。</string>
+    <string name="label_backup_archive">备份存档</string>
+    <string name="label_password">密码</string>
+    <string name="import_failed">导入失败:存档已损坏或密码错误。</string>
+    <string name="action_import">导入</string>
+
+    <!-- Export account dialog -->
+    <string name="export_account_title">导出账号</string>
+    <string name="export_account_warning">请为您的密钥备份设置密码保护。任何拥有此存档和密码的人都可以冒充您的 Jami ID。</string>
+    <string name="label_confirm_password">确认密码</string>
+    <string name="export_ready_hint">存档已就绪。请复制它和密码,以便在其他设备上恢复账号:</string>
+    <string name="action_export">导出</string>
+    <string name="action_close">关闭</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">设置</string>
+    <string name="section_account">账号</string>
+    <string name="label_no_username">尚未注册用户名</string>
+    <string name="export_account_item_title">导出账号</string>
+    <string name="export_account_item_desc">受密码保护的 Jami ID 密钥备份</string>
+    <string name="section_network">网络</string>
+    <string name="upnp_title">UPnP</string>
+    <string name="upnp_desc">自动进行路由器端口映射,以实现直接的 P2P 连接</string>
+    <string name="turn_title">TURN 中继</string>
+    <string name="turn_desc">当直接 P2P 连接失败时使用的备用中继</string>
+    <string name="bootstrap_nodes_title">DHT 引导节点</string>
+    <string name="bootstrap_nodes_desc">接入 OpenDHT 网络的入口点。请至少保留两个独立节点,以便在其中一个失效时应用仍可正常运行。</string>
+    <string name="content_desc_remove_node">移除节点</string>
+    <string name="label_host_port">主机:端口</string>
+    <string name="content_desc_add_node">添加节点</string>
+    <string name="section_diagnostics">诊断</string>
+    <string name="export_logs_title">导出诊断日志</string>
+    <string name="export_logs_desc">打包后台服务日志,用于排查连接问题</string>
+    <string name="export_logs_failed">导出诊断日志失败</string>
+    <string name="share_logs_chooser_title">分享诊断日志</string>
+    <string name="section_background">后台驻留</string>
+    <string name="battery_opt_title">关闭电池优化</string>
+    <string name="battery_opt_desc">在 MIUI、OneUI 等定制系统上,关闭 Meshly 的电池优化可让 P2P 前台服务保持运行,从而持续接收消息和通话。</string>
+    <string name="battery_opt_action_disable">关闭</string>
+    <string name="battery_opt_action_already">已关闭</string>
+
+    <!-- Logout -->
+    <string name="action_logout">退出登录</string>
+    <string name="logout_item_desc">退出此设备上的当前账号</string>
+    <string name="logout_confirm_title">要退出登录吗?</string>
+    <string name="logout_confirm_message">如果没有备份存档及其密码,您将无法在本设备或任何其他设备上重新登录此账号。本设备上的本地聊天记录和联系人也将被删除。</string>
+    <string name="action_cancel">取消</string>
+</resources>

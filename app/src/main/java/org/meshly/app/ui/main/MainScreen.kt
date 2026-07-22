@@ -36,7 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
+import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.ui.calls.CallsScreen
 import org.meshly.app.ui.chats.ChatsListScreen
@@ -44,8 +46,16 @@ import org.meshly.app.ui.contacts.ContactListScreen
 import org.meshly.app.ui.navigation.Routes
 import org.meshly.app.ui.settings.SettingsScreen
 
-private enum class MainTab(val label: String) {
-    CHATS("Chats"), CONTACTS("Contacts"), CALLS("Calls"), SETTINGS("Settings")
+private enum class MainTab {
+    CHATS, CONTACTS, CALLS, SETTINGS
+}
+
+@Composable
+private fun MainTab.label(): String = when (this) {
+    MainTab.CHATS -> stringResource(R.string.tab_chats)
+    MainTab.CONTACTS -> stringResource(R.string.tab_contacts)
+    MainTab.CALLS -> stringResource(R.string.tab_calls)
+    MainTab.SETTINGS -> stringResource(R.string.tab_settings)
 }
 
 @Composable
@@ -58,26 +68,26 @@ fun MainScreen(navController: NavHostController) {
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CHATS,
                     onClick = { selectedTab = MainTab.CHATS },
-                    icon = { Icon(Icons.Filled.Forum, contentDescription = MainTab.CHATS.label) },
-                    label = { Text(MainTab.CHATS.label) }
+                    icon = { Icon(Icons.Filled.Forum, contentDescription = MainTab.CHATS.label()) },
+                    label = { Text(MainTab.CHATS.label()) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CONTACTS,
                     onClick = { selectedTab = MainTab.CONTACTS },
-                    icon = { Icon(Icons.Filled.People, contentDescription = MainTab.CONTACTS.label) },
-                    label = { Text(MainTab.CONTACTS.label) }
+                    icon = { Icon(Icons.Filled.People, contentDescription = MainTab.CONTACTS.label()) },
+                    label = { Text(MainTab.CONTACTS.label()) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CALLS,
                     onClick = { selectedTab = MainTab.CALLS },
-                    icon = { Icon(Icons.Filled.Call, contentDescription = MainTab.CALLS.label) },
-                    label = { Text(MainTab.CALLS.label) }
+                    icon = { Icon(Icons.Filled.Call, contentDescription = MainTab.CALLS.label()) },
+                    label = { Text(MainTab.CALLS.label()) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.SETTINGS,
                     onClick = { selectedTab = MainTab.SETTINGS },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = MainTab.SETTINGS.label) },
-                    label = { Text(MainTab.SETTINGS.label) }
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = MainTab.SETTINGS.label()) },
+                    label = { Text(MainTab.SETTINGS.label()) }
                 )
             }
         }
@@ -90,7 +100,17 @@ fun MainScreen(navController: NavHostController) {
                     navController.navigate(Routes.chat(jamiId, displayName))
                 }
             )
-            MainTab.CONTACTS -> ContactListScreen(modifier = contentModifier)
+            MainTab.CONTACTS -> ContactListScreen(
+                modifier = contentModifier,
+                onOpenChat = { jamiId, displayName ->
+                    navController.navigate(Routes.chat(jamiId, displayName))
+                },
+                onCall = { jamiId, displayName, callType ->
+                    navController.navigate(
+                        Routes.call(jamiId, displayName, callType.name, outgoing = true)
+                    )
+                }
+            )
             MainTab.CALLS -> CallsScreen(
                 modifier = contentModifier,
                 onDial = { jamiId, displayName, callType ->
@@ -99,7 +119,19 @@ fun MainScreen(navController: NavHostController) {
                     )
                 }
             )
-            MainTab.SETTINGS -> SettingsScreen(modifier = contentModifier)
+            MainTab.SETTINGS -> SettingsScreen(
+                modifier = contentModifier,
+                onLoggedOut = {
+                    // By the time a user can reach Settings, onboarding's own completion
+                    // callback has already popped Routes.ONBOARDING off the back stack
+                    // (inclusive), so popping up to that route here would be a no-op. Popping
+                    // up to the graph's own id instead clears the entire back stack unconditionally,
+                    // which is the documented pattern for a full "log out and start over" flow.
+                    navController.navigate(Routes.ONBOARDING) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

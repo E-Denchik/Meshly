@@ -1,7 +1,150 @@
 <resources>
     <string name="app_name">Meshly</string>
+
+    <!-- Notification channels -->
     <string name="notification_channel_daemon_name">Meshly P2P Connection</string>
     <string name="notification_channel_daemon_desc">Maintains decentralized P2P network presence</string>
     <string name="notification_channel_call_name">Meshly Calls</string>
     <string name="notification_channel_call_desc">Active audio and video call notifications</string>
+    <string name="notification_channel_message_name">Meshly Messages</string>
+    <string name="notification_channel_message_desc">New direct message notifications</string>
+
+    <!-- Foreground service / notification content -->
+    <string name="notification_daemon_title">Meshly P2P Core</string>
+    <string name="notification_daemon_text">Connected to decentralized OpenDHT network</string>
+    <string name="notification_incoming_audio_call">Incoming audio call</string>
+    <string name="notification_incoming_video_call">Incoming video call</string>
+    <string name="notification_message_attachment_fallback">Sent an attachment</string>
+    <string name="call_notification_title_audio">Meshly Audio Call</string>
+    <string name="call_notification_title_video">Meshly Video Call</string>
+    <string name="call_notification_text">Ongoing call with %1$s</string>
+
+    <!-- Call state labels -->
+    <string name="call_state_dialing">Dialing…</string>
+    <string name="call_state_incoming">Incoming call</string>
+    <string name="call_state_connecting">Connecting…</string>
+    <string name="call_state_connected">Connected</string>
+    <string name="call_state_ended">Call ended</string>
+
+    <!-- Incoming call screen -->
+    <string name="incoming_audio_call">Incoming audio call</string>
+    <string name="incoming_video_call">Incoming video call</string>
+    <string name="content_desc_accept">Accept</string>
+    <string name="content_desc_reject">Reject</string>
+
+    <!-- In-call screen -->
+    <string name="content_desc_toggle_mute">Toggle mute</string>
+    <string name="content_desc_toggle_camera">Toggle camera</string>
+    <string name="content_desc_flip_camera">Flip camera</string>
+    <string name="content_desc_toggle_screen_share">Toggle screen sharing</string>
+    <string name="content_desc_hang_up">Hang up</string>
+    <string name="video_preview_placeholder">Video preview surface (Phase 2: libjami video sink)</string>
+    <string name="screen_share_placeholder">Sharing your screen (Phase 2: MediaProjection + libjami video sink)</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_chats">Chats</string>
+    <string name="tab_contacts">Contacts</string>
+    <string name="tab_calls">Calls</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Chats list -->
+    <string name="chats_title">Chats</string>
+    <string name="chats_empty">No conversations yet. Add a contact to start chatting.</string>
+    <string name="content_desc_online">Online</string>
+
+    <!-- Calls tab -->
+    <string name="calls_title">Calls</string>
+    <string name="calls_empty">Add a confirmed contact to place a call.</string>
+    <string name="ongoing_audio_call_with">Ongoing audio call with %1$s</string>
+    <string name="ongoing_video_call_with">Ongoing video call with %1$s</string>
+    <string name="content_desc_audio_call">Audio call</string>
+    <string name="content_desc_video_call">Video call</string>
+
+    <!-- Contacts screen -->
+    <string name="contacts_title">Contacts</string>
+    <string name="contact_search_label">Jami ID or username</string>
+    <string name="contact_search_error_invalid">Enter a full Jami ID (jami: followed by 40 hex characters) or a valid username</string>
+    <string name="contact_search_error_duplicate">Already a contact or pending request</string>
+    <string name="content_desc_add_contact">Add contact</string>
+    <string name="tab_contacts_count">Contacts (%1$d)</string>
+    <string name="tab_requests_count">Requests (%1$d)</string>
+    <string name="tab_blocked_count">Blocked (%1$d)</string>
+    <string name="contacts_empty">No contacts yet.</string>
+    <string name="requests_empty">No pending requests.</string>
+    <string name="blocked_empty">No blocked contacts.</string>
+    <string name="content_desc_more_options">More options</string>
+    <string name="action_block">Block</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_unblock">Unblock</string>
+
+    <!-- Chat screen -->
+    <string name="content_desc_attach_file">Attach file</string>
+    <string name="content_desc_remove_attachment">Remove attachment</string>
+    <string name="message_placeholder">Message</string>
+    <string name="content_desc_send">Send</string>
+    <string name="attachment_fallback_name">Attachment</string>
+    <string name="content_desc_attachment">Attachment</string>
+    <string name="message_status_sending">Sending</string>
+    <string name="message_status_sent">Sent</string>
+    <string name="message_status_delivered">Delivered</string>
+    <string name="message_status_read">Read</string>
+    <string name="message_status_failed">Failed to send</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Serverless, end-to-end encrypted P2P messaging and calls, powered by GNU Jami.</string>
+    <string name="action_create_new_id">Create a new Jami ID</string>
+    <string name="action_import_existing">Import an existing account</string>
+    <string name="choose_username_title">Choose a username (optional)</string>
+    <string name="choose_username_desc">Your Jami ID keypair will be generated on-device. Registering a username lets others find you by name instead of the raw ID.</string>
+    <string name="label_username">Username</string>
+    <string name="action_generate_id">Generate Jami ID</string>
+    <string name="action_back">Back</string>
+    <string name="import_account_title">Import account archive</string>
+    <string name="import_account_desc">Paste the password-protected account backup created from another device (Settings, then Export account there), then enter its password.</string>
+    <string name="label_backup_archive">Backup archive</string>
+    <string name="label_password">Password</string>
+    <string name="import_failed">Couldn\'t import: the archive is malformed or the password is wrong.</string>
+    <string name="action_import">Import</string>
+
+    <!-- Export account dialog -->
+    <string name="export_account_title">Export account</string>
+    <string name="export_account_warning">Protect your key backup with a password. Anyone with this archive and password can impersonate your Jami ID.</string>
+    <string name="label_confirm_password">Confirm password</string>
+    <string name="export_ready_hint">Archive ready. Copy this and the password to restore on another device:</string>
+    <string name="action_export">Export</string>
+    <string name="action_close">Close</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="section_account">Account</string>
+    <string name="label_no_username">No username registered</string>
+    <string name="export_account_item_title">Export account</string>
+    <string name="export_account_item_desc">Password-protected backup of your Jami ID keys</string>
+    <string name="section_network">Network</string>
+    <string name="upnp_title">UPnP</string>
+    <string name="upnp_desc">Automatic router port mapping for direct P2P connections</string>
+    <string name="turn_title">TURN relay</string>
+    <string name="turn_desc">Fallback relay when direct P2P connectivity fails</string>
+    <string name="bootstrap_nodes_title">DHT bootstrap nodes</string>
+    <string name="bootstrap_nodes_desc">Entry points into the OpenDHT network. Keep at least two independent nodes so the app survives one going down.</string>
+    <string name="content_desc_remove_node">Remove node</string>
+    <string name="label_host_port">host:port</string>
+    <string name="content_desc_add_node">Add node</string>
+    <string name="section_diagnostics">Diagnostics</string>
+    <string name="export_logs_title">Export diagnostic logs</string>
+    <string name="export_logs_desc">Bundle daemon logs for troubleshooting connectivity issues</string>
+    <string name="export_logs_failed">Failed to export diagnostic logs</string>
+    <string name="share_logs_chooser_title">Share diagnostic logs</string>
+    <string name="section_background">Background presence</string>
+    <string name="battery_opt_title">Disable battery optimization</string>
+    <string name="battery_opt_desc">On MIUI, OneUI, and other custom ROMs, disabling battery optimization for Meshly keeps the P2P foreground service alive so you keep receiving messages and calls.</string>
+    <string name="battery_opt_action_disable">Disable</string>
+    <string name="battery_opt_action_already">Already disabled</string>
+
+    <!-- Logout -->
+    <string name="action_logout">Log out</string>
+    <string name="logout_item_desc">Sign out of this identity on this device</string>
+    <string name="logout_confirm_title">Log out?</string>
+    <string name="logout_confirm_message">Without a backup archive and its password, you won\'t be able to log back into this identity on this or any other device. Local chats and contacts on this device will also be deleted.</string>
+    <string name="action_cancel">Cancel</string>
 </resources>

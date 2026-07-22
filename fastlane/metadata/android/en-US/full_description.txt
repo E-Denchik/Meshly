@@ -1,0 +1,24 @@
+Meshly is a decentralized, end-to-end encrypted peer-to-peer messenger and calling app
+built on GNU Jami's core engine (libjami / jami-daemon). There is no central account
+server: identities, contact requests, messages, and calls are all designed to travel
+directly between devices over OpenDHT, with ICE/STUN/TURN for NAT traversal and GnuTLS
+for transport security - the same open, federation-free network Jami itself uses.
+
+Key points:
+* No email or phone number required - your identity is a locally generated keypair.
+* Optional, human-readable username registration through Jami's own name service.
+* Password-protected account export/import for backup and moving between devices.
+* Local-only chat history stored on your device, never on a server you don't control.
+* Audio and video 1:1 calls with an incoming-call screen that works over the lock screen.
+* No Google Play Services or Firebase Cloud Messaging in the critical path.
+* Configurable OpenDHT bootstrap nodes and UPnP, so no single node is a single point
+  of failure.
+* Fully open source under the GNU General Public License v3 (GPLv3), same as libjami.
+
+Development status: this build currently runs on a mock/stub engine while the real
+native libjami integration (Phase 2 - see PHASE2_BUILD.md in the source repository) is
+being completed. Every screen is fully exercisable end-to-end, but messages and calls
+are not yet carried over a real OpenDHT network. Check the project README for the
+current phase before relying on it for real communication.
+
+Source code, build instructions, and issue tracker: see the project's GitHub repository.

@@ -21,6 +21,7 @@
 package org.meshly.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,9 +33,24 @@ import org.meshly.app.ui.chat.ChatScreen
 import org.meshly.app.ui.main.MainScreen
 import org.meshly.app.ui.onboarding.OnboardingScreen
 
+/**
+ * [pendingChatDeepLink] navigates straight into a chat when the app was opened from an incoming
+ * message notification (FR-5.1); [onDeepLinkConsumed] clears it so back-navigation or process
+ * restarts don't replay the same jump.
+ */
 @Composable
-fun MeshlyNavHost() {
+fun MeshlyNavHost(
+    pendingChatDeepLink: Pair<String, String>? = null,
+    onDeepLinkConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
+
+    LaunchedEffect(pendingChatDeepLink) {
+        pendingChatDeepLink?.let { (jamiId, displayName) ->
+            navController.navigate(Routes.chat(jamiId, displayName))
+            onDeepLinkConsumed()
+        }
+    }
 
     NavHost(navController = navController, startDestination = Routes.ONBOARDING) {
         composable(Routes.ONBOARDING) {

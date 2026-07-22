@@ -28,13 +28,14 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.R
+import org.meshly.app.data.model.CallType
 import org.meshly.app.ui.call.IncomingCallActivity
 
 class CallService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val peerName = intent?.getStringExtra(EXTRA_PEER_NAME) ?: "Peer"
-        val callType = intent?.getStringExtra(EXTRA_CALL_TYPE) ?: "Audio"
+        val peerName = intent?.getStringExtra(EXTRA_PEER_NAME).orEmpty()
+        val callType = CallType.valueOf(intent?.getStringExtra(EXTRA_CALL_TYPE) ?: CallType.AUDIO.name)
 
         startForeground(NOTIFICATION_ID, createCallNotification(peerName, callType))
         return START_NOT_STICKY
@@ -42,7 +43,7 @@ class CallService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun createCallNotification(peerName: String, callType: String): Notification {
+    private fun createCallNotification(peerName: String, callType: CallType): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -50,9 +51,15 @@ class CallService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        val titleRes = if (callType == CallType.VIDEO) {
+            R.string.call_notification_title_video
+        } else {
+            R.string.call_notification_title_audio
+        }
+
         return NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_CALL_ID)
-            .setContentTitle("Meshly $callType Call")
-            .setContentText("Ongoing call with $peerName")
+            .setContentTitle(getString(titleRes))
+            .setContentText(getString(R.string.call_notification_text, peerName))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

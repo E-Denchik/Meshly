@@ -42,5 +42,6 @@ data class CallSession(
     val isMuted: Boolean = false,
     val isCameraOn: Boolean = true,
     val isFrontCamera: Boolean = true,
+    val isScreenSharing: Boolean = false,
     val startTime: Long = 0L
 )

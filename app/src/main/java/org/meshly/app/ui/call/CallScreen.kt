@@ -25,10 +25,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ScreenShare
+import androidx.compose.material.icons.automirrored.filled.StopScreenShare
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Mic
@@ -48,12 +52,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlin.random.Random
+import org.meshly.app.R
 import org.meshly.app.data.model.CallState
 import org.meshly.app.data.model.CallType
+import org.meshly.app.ui.components.Avatar
 import org.meshly.app.ui.viewmodel.CallViewModel
 
 @Composable
@@ -70,10 +78,14 @@ fun CallScreen(
     LaunchedEffect(peerJamiId) {
         if (isOutgoing) {
             val session = viewModel.placeCall(peerJamiId, peerDisplayName, callType)
-            // Mock stage: no real peer signaling yet, simulate the callee answering
-            // so the UI can be exercised end-to-end without native libjami.
-            delay(1500)
-            viewModel.acceptCall(session.callId)
+            // Mock stage: no real peer signaling yet, simulate the callee either answering
+            // or not picking up, so the UI can be exercised end-to-end without native libjami.
+            delay(Random.nextLong(1200, 3000))
+            if (Random.nextFloat() < 0.85f) {
+                viewModel.acceptCall(session.callId)
+            } else {
+                viewModel.hangUpCall(session.callId)
+            }
         }
     }
 
@@ -96,25 +108,43 @@ fun CallScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val showsVisualPlaceholder = session?.isScreenSharing == true ||
+                        (callType == CallType.VIDEO && session?.isCameraOn == true)
+                    if (!showsVisualPlaceholder) {
+                        Avatar(name = peerDisplayName, seed = peerJamiId, size = 120.dp)
+                        Spacer(Modifier.height(24.dp))
+                    }
+
                     Text(
                         peerDisplayName,
                         style = MaterialTheme.typography.headlineSmall,
                         color = Color.White
                     )
                     Text(
-                        session?.state?.name?.lowercase() ?: "connecting",
+                        callStateLabel(session?.state),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.7f)
                     )
-                }
 
-                if (callType == CallType.VIDEO && session?.isCameraOn == true) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Video preview surface (Phase 2: libjami video sink)", color = Color.White.copy(alpha = 0.5f))
+                    if (session?.isScreenSharing == true) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.screen_share_placeholder), color = Color.White.copy(alpha = 0.5f))
+                        }
+                    } else if (callType == CallType.VIDEO && session?.isCameraOn == true) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.video_preview_placeholder), color = Color.White.copy(alpha = 0.5f))
+                        }
                     }
                 }
 
@@ -125,7 +155,7 @@ fun CallScreen(
                     FilledTonalIconButton(onClick = { viewModel.toggleMute() }) {
                         Icon(
                             imageVector = if (session?.isMuted == true) Icons.Filled.MicOff else Icons.Filled.Mic,
-                            contentDescription = "Toggle mute"
+                            contentDescription = stringResource(R.string.content_desc_toggle_mute)
                         )
                     }
 
@@ -133,12 +163,23 @@ fun CallScreen(
                         FilledTonalIconButton(onClick = { viewModel.toggleCamera() }) {
                             Icon(
                                 imageVector = if (session?.isCameraOn == true) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
-                                contentDescription = "Toggle camera"
+                                contentDescription = stringResource(R.string.content_desc_toggle_camera)
                             )
                         }
                         FilledTonalIconButton(onClick = { viewModel.flipCamera() }) {
-                            Icon(Icons.Filled.Cameraswitch, contentDescription = "Flip camera")
+                            Icon(Icons.Filled.Cameraswitch, contentDescription = stringResource(R.string.content_desc_flip_camera))
                         }
+                    }
+
+                    FilledTonalIconButton(onClick = { viewModel.toggleScreenShare() }) {
+                        Icon(
+                            imageVector = if (session?.isScreenSharing == true) {
+                                Icons.AutoMirrored.Filled.StopScreenShare
+                            } else {
+                                Icons.AutoMirrored.Filled.ScreenShare
+                            },
+                            contentDescription = stringResource(R.string.content_desc_toggle_screen_share)
+                        )
                     }
 
                     FilledIconButton(
@@ -150,10 +191,19 @@ fun CallScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Icon(Icons.Filled.CallEnd, contentDescription = "Hang up")
+                        Icon(Icons.Filled.CallEnd, contentDescription = stringResource(R.string.content_desc_hang_up))
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun callStateLabel(state: CallState?): String = when (state) {
+    CallState.DIALING -> stringResource(R.string.call_state_dialing)
+    CallState.INCOMING -> stringResource(R.string.call_state_incoming)
+    CallState.CONNECTED -> stringResource(R.string.call_state_connected)
+    CallState.ENDED -> stringResource(R.string.call_state_ended)
+    CallState.IDLE, null -> stringResource(R.string.call_state_connecting)
 }

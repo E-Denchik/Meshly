@@ -37,8 +37,17 @@ interface ContactDao {
     @Query("SELECT * FROM contacts WHERE jamiId = :jamiId LIMIT 1")
     suspend fun getContactById(jamiId: String): ContactEntity?
 
+    @Query("SELECT COUNT(*) FROM contacts")
+    suspend fun countContacts(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateContact(contact: ContactEntity)
+
+    @Query("UPDATE contacts SET status = :status WHERE jamiId = :jamiId")
+    suspend fun updateStatus(jamiId: String, status: String)
+
+    @Query("UPDATE contacts SET presence = :presence WHERE jamiId = :jamiId")
+    suspend fun updatePresence(jamiId: String, presence: String)
 
     @Query("DELETE FROM contacts WHERE jamiId = :jamiId")
     suspend fun deleteContact(jamiId: String)

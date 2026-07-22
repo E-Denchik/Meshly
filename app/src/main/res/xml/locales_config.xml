@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares the locales Meshly ships translations for (Android 13+ uses this to power the
+  system "App languages" picker and per-app language override). This is a supplement to,
+  not a replacement for, ordinary resource-qualifier auto-detection: on every API level back
+  to minSdk 24, Android already picks the best-matching values-<locale>/ folder from the
+  device's system language automatically, falling back to values/ (English) when none of
+  these match - nothing else is required for that base behavior to work.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ru" />
+    <locale android:name="fr" />
+    <locale android:name="tr" />
+    <locale android:name="ar" />
+    <locale android:name="zh" />
+</locale-config>

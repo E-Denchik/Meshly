@@ -1,0 +1,12 @@
+Initial development build.
+
+* Local account creation with optional Jami username registration
+* Contact requests, accept/reject, block/unblock
+* 1:1 text chat with local history, delivery/read receipts, file and image attachments
+* 1:1 audio and video calls with camera switch, mute, and an over-lock-screen incoming call UI
+* Password-protected account export/import
+* Configurable OpenDHT bootstrap nodes, UPnP toggle
+* Local diagnostic log export
+* Notifications for incoming calls and messages without Firebase Cloud Messaging
+
+Runs on a mock engine pending the real libjami native integration (see PHASE2_BUILD.md).

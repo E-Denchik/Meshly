@@ -20,9 +20,15 @@
 
 package org.meshly.app.data.repository
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import org.meshly.app.core.JamiBridge
+import org.meshly.app.core.JamiEvent
 import org.meshly.app.data.local.ChatMessageDao
 import org.meshly.app.data.local.ChatMessageEntity
 import org.meshly.app.data.model.ChatMessage
@@ -33,9 +39,27 @@ class ChatRepository(
     private val chatMessageDao: ChatMessageDao,
     private val jamiBridge: JamiBridge = JamiBridge.getInstance()
 ) {
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        jamiBridge.events
+            .onEach { event -> handleEvent(event) }
+            .launchIn(repositoryScope)
+    }
+
     fun getMessagesForConversation(conversationId: String): Flow<List<ChatMessage>> {
         return chatMessageDao.getMessagesForConversation(conversationId).map { entities ->
             entities.map { it.toDomain() }
+        }
+    }
+
+    private suspend fun handleEvent(event: JamiEvent) {
+        when (event) {
+            is JamiEvent.MessageReceived -> receiveMessage(event.message)
+            is JamiEvent.MessageStateChanged -> {
+                chatMessageDao.updateMessageStatus(event.messageId, event.status.name)
+            }
+            else -> Unit
         }
     }
 
@@ -52,9 +76,9 @@ class ChatRepository(
         )
         chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(pendingMessage))
 
-        val sentMessage = jamiBridge.sendTextMessage(conversationId, text, attachmentPath)
+        jamiBridge.sendTextMessage(pendingId, conversationId, text, attachmentPath)
         chatMessageDao.updateMessageStatus(pendingId, MessageStatus.SENT.name)
-        return sentMessage.copy(id = pendingId, status = MessageStatus.SENT)
+        return pendingMessage.copy(status = MessageStatus.SENT)
     }
 
     suspend fun receiveMessage(message: ChatMessage) {

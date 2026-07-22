@@ -40,9 +40,9 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         accountRepository.createAccount(username)
     }
 
-    fun importAccount(backupPayload: String) {
-        // Stage 1 mock: real import will parse a GPLv3-licensed libjami key archive.
-        accountRepository.createAccount(null)
+    /** Returns true if the archive+password round-tripped to a restored identity. */
+    fun importAccount(backupPayload: String, password: String): Boolean {
+        return accountRepository.importAccountBackup(backupPayload, password) != null
     }
 
     fun exportAccount(password: String): String {

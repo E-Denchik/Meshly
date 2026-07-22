@@ -37,8 +37,18 @@ class FakeContactDao : ContactDao {
     override suspend fun getContactById(jamiId: String): ContactEntity? =
         state.value.firstOrNull { it.jamiId == jamiId }
 
+    override suspend fun countContacts(): Int = state.value.size
+
     override suspend fun insertOrUpdateContact(contact: ContactEntity) {
         state.value = state.value.filterNot { it.jamiId == contact.jamiId } + contact
+    }
+
+    override suspend fun updateStatus(jamiId: String, status: String) {
+        state.value = state.value.map { if (it.jamiId == jamiId) it.copy(status = status) else it }
+    }
+
+    override suspend fun updatePresence(jamiId: String, presence: String) {
+        state.value = state.value.map { if (it.jamiId == jamiId) it.copy(presence = presence) else it }
     }
 
     override suspend fun deleteContact(jamiId: String) {

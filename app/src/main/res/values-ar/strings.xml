@@ -1,0 +1,150 @@
+<resources>
+    <string name="app_name">Meshly</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_daemon_name">اتصال Meshly اللامركزي</string>
+    <string name="notification_channel_daemon_desc">يحافظ على الحضور في الشبكة اللامركزية من نظير إلى نظير</string>
+    <string name="notification_channel_call_name">مكالمات Meshly</string>
+    <string name="notification_channel_call_desc">إشعارات المكالمات الصوتية والمرئية النشطة</string>
+    <string name="notification_channel_message_name">رسائل Meshly</string>
+    <string name="notification_channel_message_desc">إشعارات الرسائل المباشرة الجديدة</string>
+
+    <!-- Foreground service / notification content -->
+    <string name="notification_daemon_title">نواة Meshly للاتصال اللامركزي</string>
+    <string name="notification_daemon_text">متصل بشبكة OpenDHT اللامركزية</string>
+    <string name="notification_incoming_audio_call">مكالمة صوتية واردة</string>
+    <string name="notification_incoming_video_call">مكالمة مرئية واردة</string>
+    <string name="notification_message_attachment_fallback">تم إرسال مرفق</string>
+    <string name="call_notification_title_audio">مكالمة Meshly الصوتية</string>
+    <string name="call_notification_title_video">مكالمة Meshly المرئية</string>
+    <string name="call_notification_text">مكالمة جارية مع %1$s</string>
+
+    <!-- Call state labels -->
+    <string name="call_state_dialing">جارٍ الاتصال…</string>
+    <string name="call_state_incoming">مكالمة واردة</string>
+    <string name="call_state_connecting">جارٍ الاتصال…</string>
+    <string name="call_state_connected">تم الاتصال</string>
+    <string name="call_state_ended">انتهت المكالمة</string>
+
+    <!-- Incoming call screen -->
+    <string name="incoming_audio_call">مكالمة صوتية واردة</string>
+    <string name="incoming_video_call">مكالمة مرئية واردة</string>
+    <string name="content_desc_accept">قبول</string>
+    <string name="content_desc_reject">رفض</string>
+
+    <!-- In-call screen -->
+    <string name="content_desc_toggle_mute">كتم/إلغاء كتم الميكروفون</string>
+    <string name="content_desc_toggle_camera">تشغيل/إيقاف الكاميرا</string>
+    <string name="content_desc_flip_camera">تبديل الكاميرا</string>
+    <string name="content_desc_toggle_screen_share">تشغيل/إيقاف مشاركة الشاشة</string>
+    <string name="content_desc_hang_up">إنهاء المكالمة</string>
+    <string name="video_preview_placeholder">سطح معاينة الفيديو (المرحلة 2: مخرج فيديو libjami)</string>
+    <string name="screen_share_placeholder">جارٍ مشاركة الشاشة (المرحلة 2: MediaProjection ومخرج فيديو libjami)</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_chats">المحادثات</string>
+    <string name="tab_contacts">جهات الاتصال</string>
+    <string name="tab_calls">المكالمات</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <!-- Chats list -->
+    <string name="chats_title">المحادثات</string>
+    <string name="chats_empty">لا توجد محادثات بعد. أضف جهة اتصال لبدء الدردشة.</string>
+    <string name="content_desc_online">متصل</string>
+
+    <!-- Calls tab -->
+    <string name="calls_title">المكالمات</string>
+    <string name="calls_empty">أضف جهة اتصال مؤكدة لإجراء مكالمة.</string>
+    <string name="ongoing_audio_call_with">مكالمة صوتية جارية مع %1$s</string>
+    <string name="ongoing_video_call_with">مكالمة مرئية جارية مع %1$s</string>
+    <string name="content_desc_audio_call">مكالمة صوتية</string>
+    <string name="content_desc_video_call">مكالمة مرئية</string>
+
+    <!-- Contacts screen -->
+    <string name="contacts_title">جهات الاتصال</string>
+    <string name="contact_search_label">معرّف Jami أو اسم المستخدم</string>
+    <string name="contact_search_error_invalid">أدخل معرّف Jami كاملاً (jami: يليه 40 حرفًا سداسيًا عشريًا) أو اسم مستخدم صالحًا</string>
+    <string name="contact_search_error_duplicate">موجود بالفعل ضمن جهات الاتصال أو لديه طلب معلّق</string>
+    <string name="content_desc_add_contact">إضافة جهة اتصال</string>
+    <string name="tab_contacts_count">جهات الاتصال (%1$d)</string>
+    <string name="tab_requests_count">الطلبات (%1$d)</string>
+    <string name="tab_blocked_count">المحظورون (%1$d)</string>
+    <string name="contacts_empty">لا توجد جهات اتصال بعد.</string>
+    <string name="requests_empty">لا توجد طلبات معلّقة.</string>
+    <string name="blocked_empty">لا توجد جهات اتصال محظورة.</string>
+    <string name="content_desc_more_options">خيارات إضافية</string>
+    <string name="action_block">حظر</string>
+    <string name="action_remove">إزالة</string>
+    <string name="action_unblock">إلغاء الحظر</string>
+
+    <!-- Chat screen -->
+    <string name="content_desc_attach_file">إرفاق ملف</string>
+    <string name="content_desc_remove_attachment">إزالة المرفق</string>
+    <string name="message_placeholder">رسالة</string>
+    <string name="content_desc_send">إرسال</string>
+    <string name="attachment_fallback_name">مرفق</string>
+    <string name="content_desc_attachment">مرفق</string>
+    <string name="message_status_sending">جارٍ الإرسال</string>
+    <string name="message_status_sent">تم الإرسال</string>
+    <string name="message_status_delivered">تم التسليم</string>
+    <string name="message_status_read">تمت القراءة</string>
+    <string name="message_status_failed">فشل الإرسال</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">مراسلة ومكالمات مشفّرة تمامًا من نظير إلى نظير بلا خادم، مدعومة بواسطة GNU Jami.</string>
+    <string name="action_create_new_id">إنشاء معرّف Jami جديد</string>
+    <string name="action_import_existing">استيراد حساب موجود</string>
+    <string name="choose_username_title">اختر اسم مستخدم (اختياري)</string>
+    <string name="choose_username_desc">سيتم إنشاء زوج مفاتيح معرّف Jami الخاص بك على الجهاز. يتيح لك تسجيل اسم مستخدم أن يجدك الآخرون بالاسم بدلاً من المعرّف الخام.</string>
+    <string name="label_username">اسم المستخدم</string>
+    <string name="action_generate_id">إنشاء معرّف Jami</string>
+    <string name="action_back">رجوع</string>
+    <string name="import_account_title">استيراد أرشيف الحساب</string>
+    <string name="import_account_desc">الصق النسخة الاحتياطية للحساب المحمية بكلمة مرور والتي تم إنشاؤها على جهاز آخر (من الإعدادات هناك، اختر تصدير الحساب)، ثم أدخل كلمة المرور الخاصة بها.</string>
+    <string name="label_backup_archive">أرشيف النسخة الاحتياطية</string>
+    <string name="label_password">كلمة المرور</string>
+    <string name="import_failed">تعذّر الاستيراد: الأرشيف تالف أو كلمة المرور غير صحيحة.</string>
+    <string name="action_import">استيراد</string>
+
+    <!-- Export account dialog -->
+    <string name="export_account_title">تصدير الحساب</string>
+    <string name="export_account_warning">احمِ النسخة الاحتياطية لمفاتيحك بكلمة مرور. يمكن لأي شخص يملك هذا الأرشيف وكلمة المرور انتحال هوية معرّف Jami الخاص بك.</string>
+    <string name="label_confirm_password">تأكيد كلمة المرور</string>
+    <string name="export_ready_hint">الأرشيف جاهز. انسخه مع كلمة المرور لاستعادة الحساب على جهاز آخر:</string>
+    <string name="action_export">تصدير</string>
+    <string name="action_close">إغلاق</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="section_account">الحساب</string>
+    <string name="label_no_username">لم يتم تسجيل اسم مستخدم</string>
+    <string name="export_account_item_title">تصدير الحساب</string>
+    <string name="export_account_item_desc">نسخة احتياطية محمية بكلمة مرور لمفاتيح معرّف Jami الخاص بك</string>
+    <string name="section_network">الشبكة</string>
+    <string name="upnp_title">UPnP</string>
+    <string name="upnp_desc">توجيه منافذ الراوتر تلقائيًا للاتصالات المباشرة من نظير إلى نظير</string>
+    <string name="turn_title">مُرحّل TURN</string>
+    <string name="turn_desc">مُرحّل احتياطي عند تعذّر الاتصال المباشر من نظير إلى نظير</string>
+    <string name="bootstrap_nodes_title">عُقد بدء تشغيل DHT</string>
+    <string name="bootstrap_nodes_desc">نقاط الدخول إلى شبكة OpenDHT. احتفظ بعُقدتين مستقلتين على الأقل حتى يستمر التطبيق بالعمل في حال تعطّل إحداهما.</string>
+    <string name="content_desc_remove_node">إزالة العقدة</string>
+    <string name="label_host_port">المضيف:المنفذ</string>
+    <string name="content_desc_add_node">إضافة عقدة</string>
+    <string name="section_diagnostics">التشخيص</string>
+    <string name="export_logs_title">تصدير سجلات التشخيص</string>
+    <string name="export_logs_desc">تجميع سجلات الخدمة الخلفية لاستكشاف مشكلات الاتصال وإصلاحها</string>
+    <string name="export_logs_failed">فشل تصدير سجلات التشخيص</string>
+    <string name="share_logs_chooser_title">مشاركة سجلات التشخيص</string>
+    <string name="section_background">الحضور في الخلفية</string>
+    <string name="battery_opt_title">إيقاف تحسين البطارية</string>
+    <string name="battery_opt_desc">على أنظمة MIUI وOneUI وواجهات أخرى مخصّصة، يؤدي إيقاف تحسين البطارية لتطبيق Meshly إلى إبقاء خدمة نظير إلى نظير الخلفية نشطة، لتستمر في تلقّي الرسائل والمكالمات.</string>
+    <string name="battery_opt_action_disable">إيقاف</string>
+    <string name="battery_opt_action_already">تم الإيقاف بالفعل</string>
+
+    <!-- Logout -->
+    <string name="action_logout">تسجيل الخروج</string>
+    <string name="logout_item_desc">تسجيل الخروج من هذا الحساب على هذا الجهاز</string>
+    <string name="logout_confirm_title">هل تريد تسجيل الخروج؟</string>
+    <string name="logout_confirm_message">بدون أرشيف النسخة الاحتياطية وكلمة مروره، لن تتمكن من تسجيل الدخول مجددًا إلى هذا الحساب على هذا الجهاز أو أي جهاز آخر. سيتم أيضًا حذف المحادثات وجهات الاتصال المحلية على هذا الجهاز.</string>
+    <string name="action_cancel">إلغاء</string>
+</resources>

@@ -20,6 +20,10 @@
 
 package org.meshly.app.ui.chat
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +38,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
@@ -54,9 +60,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
@@ -72,6 +81,23 @@ fun ChatScreen(
 ) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     var draft by remember { mutableStateOf("") }
+    var pendingAttachment by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // Some providers (e.g. camera roll on certain OEMs) don't support persistable
+                // grants; the URI is still usable for the current process lifetime either way.
+            }
+            pendingAttachment = uri
+        }
+    }
 
     LaunchedEffect(peerJamiId) {
         viewModel.setConversationId(peerJamiId)
@@ -83,37 +109,56 @@ fun ChatScreen(
                 title = { Text(peerDisplayName) },
                 actions = {
                     IconButton(onClick = { onStartCall(CallType.AUDIO) }) {
-                        Icon(Icons.Filled.Call, contentDescription = "Audio call")
+                        Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
                     }
                     IconButton(onClick = { onStartCall(CallType.VIDEO) }) {
-                        Icon(Icons.Filled.Videocam, contentDescription = "Video call")
+                        Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
                     }
                 }
             )
         },
         bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { /* file attachment picker: Phase 2 */ }) {
-                    Icon(Icons.Filled.AttachFile, contentDescription = "Attach file")
-                }
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Message") }
-                )
-                IconButton(
-                    onClick = {
-                        if (draft.isNotBlank()) {
-                            viewModel.sendMessage(draft)
-                            draft = ""
+            Column(modifier = Modifier.fillMaxWidth()) {
+                pendingAttachment?.let { uri ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            uri.lastPathSegment ?: stringResource(R.string.attachment_fallback_name),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { pendingAttachment = null }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.content_desc_remove_attachment))
                         }
                     }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                    IconButton(onClick = { filePicker.launch("*/*") }) {
+                        Icon(Icons.Filled.AttachFile, contentDescription = stringResource(R.string.content_desc_attach_file))
+                    }
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.message_placeholder)) }
+                    )
+                    IconButton(
+                        onClick = {
+                            if (draft.isNotBlank() || pendingAttachment != null) {
+                                viewModel.sendMessage(draft, pendingAttachment?.toString())
+                                draft = ""
+                                pendingAttachment = null
+                            }
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.content_desc_send))
+                    }
                 }
             }
         }
@@ -147,10 +192,24 @@ private fun MessageBubble(message: ChatMessage) {
                 color = bubbleColor,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = message.text,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                )
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    message.attachmentPath?.let { path ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.InsertDriveFile,
+                                contentDescription = stringResource(R.string.content_desc_attachment),
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(
+                                Uri.parse(path).lastPathSegment ?: stringResource(R.string.attachment_fallback_name),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    if (message.text.isNotBlank()) {
+                        Text(text = message.text)
+                    }
+                }
             }
             if (!message.isIncoming) {
                 Row(
@@ -159,7 +218,7 @@ private fun MessageBubble(message: ChatMessage) {
                 ) {
                     Icon(
                         imageVector = message.status.toIcon(),
-                        contentDescription = message.status.name,
+                        contentDescription = stringResource(message.status.toLabelRes()),
                         modifier = Modifier.padding(end = 4.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -174,4 +233,12 @@ private fun MessageStatus.toIcon() = when (this) {
     MessageStatus.SENT -> Icons.Filled.Done
     MessageStatus.DELIVERED, MessageStatus.READ -> Icons.Filled.DoneAll
     MessageStatus.FAILED -> Icons.Filled.Schedule
+}
+
+private fun MessageStatus.toLabelRes() = when (this) {
+    MessageStatus.SENDING -> R.string.message_status_sending
+    MessageStatus.SENT -> R.string.message_status_sent
+    MessageStatus.DELIVERED -> R.string.message_status_delivered
+    MessageStatus.READ -> R.string.message_status_read
+    MessageStatus.FAILED -> R.string.message_status_failed
 }

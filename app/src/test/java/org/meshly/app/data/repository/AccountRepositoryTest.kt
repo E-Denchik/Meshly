@@ -24,6 +24,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,5 +79,52 @@ class AccountRepositoryTest {
 
         assertTrue(bundle.isNotEmpty())
         assertTrue(bundle.contains(repository.currentAccount.value?.jamiId.orEmpty()))
+    }
+
+    @Test
+    fun `addBootstrapNode appends a node and persists it across restarts`() {
+        val repository = AccountRepository(context)
+        repository.loadOrInitAccount()
+
+        repository.addBootstrapNode("bootstrap.example.org:4222")
+
+        assertTrue(
+            repository.currentAccount.value?.bootstrapNodes?.contains("bootstrap.example.org:4222") == true
+        )
+
+        val secondRepository = AccountRepository(context)
+        secondRepository.loadOrInitAccount()
+
+        assertTrue(
+            secondRepository.currentAccount.value?.bootstrapNodes?.contains("bootstrap.example.org:4222") == true
+        )
+    }
+
+    @Test
+    fun `removeBootstrapNode refuses to drop the last remaining node`() {
+        val repository = AccountRepository(context)
+        repository.loadOrInitAccount()
+
+        val nodes = repository.currentAccount.value?.bootstrapNodes.orEmpty()
+        nodes.drop(1).forEach { repository.removeBootstrapNode(it) }
+        assertEquals(1, repository.currentAccount.value?.bootstrapNodes?.size)
+
+        val lastNode = repository.currentAccount.value?.bootstrapNodes?.first()!!
+        repository.removeBootstrapNode(lastNode)
+
+        assertEquals(1, repository.currentAccount.value?.bootstrapNodes?.size)
+        assertEquals(lastNode, repository.currentAccount.value?.bootstrapNodes?.first())
+    }
+
+    @Test
+    fun `logout clears the persisted account so hasAccount is false again`() {
+        val repository = AccountRepository(context)
+        repository.loadOrInitAccount()
+        assertTrue(repository.hasAccount())
+
+        repository.logout()
+
+        assertFalse(repository.hasAccount())
+        assertNull(repository.currentAccount.value)
     }
 }

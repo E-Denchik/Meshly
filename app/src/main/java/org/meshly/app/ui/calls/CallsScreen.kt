@@ -21,7 +21,6 @@
 package org.meshly.app.ui.calls
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,12 +43,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
+import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.EmptyState
 import org.meshly.app.ui.viewmodel.CallViewModel
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
@@ -65,25 +69,39 @@ fun CallsScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Calls") }) }
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.calls_title)) }) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             activeCall?.let { session ->
-                Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(
-                        "Ongoing ${session.callType.name.lowercase()} call with ${session.peerDisplayName}",
-                        modifier = Modifier.padding(16.dp)
-                    )
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (session.callType == CallType.VIDEO) Icons.Filled.Videocam else Icons.Filled.Call,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        val ongoingText = if (session.callType == CallType.VIDEO) {
+                            stringResource(R.string.ongoing_video_call_with, session.peerDisplayName)
+                        } else {
+                            stringResource(R.string.ongoing_audio_call_with, session.peerDisplayName)
+                        }
+                        Text(
+                            ongoingText,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
                 }
             }
 
             if (callableContacts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "Add a confirmed contact to place a call.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                EmptyState(icon = Icons.Filled.Call, text = stringResource(R.string.calls_empty))
             } else {
                 LazyColumn {
                     items(callableContacts, key = { it.jamiId }) { contact ->
@@ -105,20 +123,24 @@ private fun DialRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column {
-            Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(
-                contact.jamiId,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
+            Avatar(name = contact.displayName, seed = contact.jamiId, size = 40.dp)
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    contact.jamiId,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
         Row {
             IconButton(onClick = { onDial(contact.jamiId, contact.displayName, CallType.AUDIO) }) {
-                Icon(Icons.Filled.Call, contentDescription = "Audio call")
+                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
             }
             IconButton(onClick = { onDial(contact.jamiId, contact.displayName, CallType.VIDEO) }) {
-                Icon(Icons.Filled.Videocam, contentDescription = "Video call")
+                Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
             }
         }
     }
