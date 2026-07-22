@@ -236,8 +236,33 @@ object RealJamiBridge {
 
     fun hangUpCall(accountId: String, callId: String): Boolean = JamiService.hangUp(accountId, callId)
 
+    fun hold(accountId: String, callId: String): Boolean = JamiService.hold(accountId, callId)
+
+    fun resume(accountId: String, callId: String): Boolean = JamiService.resume(accountId, callId)
+
     fun toggleMute(accountId: String, callId: String, muted: Boolean): Boolean =
         JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO", muted)
+
+    fun toggleVideoMute(accountId: String, callId: String, muted: Boolean): Boolean =
+        JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_VIDEO", muted)
+
+    /** All active call ids for this account. Maps to `getCallList(accountId)`. */
+    fun getCallList(accountId: String): List<String> {
+        val raw = JamiService.getCallList(accountId)
+        return (0 until raw.size()).map { raw[it] }
+    }
+
+    /** Snapshot of a call's details — see [RealCallSession] for the exact key mapping. */
+    fun getCallDetails(accountId: String, callId: String): RealCallSession =
+        RealCallSession.fromStringMap(callId, JamiService.getCallDetails(accountId, callId))
+
+    /**
+     * Answers a peer's [RealJamiEvent.MediaChangeRequested] (e.g. accepting an escalation from
+     * audio to video mid-call). Maps to `answerMediaChangeRequest(accountId, callId, mediaList)`
+     * (callmanager.i) — pass back the same media list structure `placeCall` builds.
+     */
+    fun answerMediaChangeRequest(accountId: String, callId: String, mediaList: VectMap): Boolean =
+        JamiService.answerMediaChangeRequest(accountId, callId, mediaList)
 
     // --- Contacts -----------------------------------------------------------------------------
     // All calls below come from configurationmanager.i's "/* Contacts */" and "/* trust

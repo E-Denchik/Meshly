@@ -70,6 +70,31 @@ internal class MeshlyCallCallback(
     ) {
         events.tryEmit(RealJamiEvent.IncomingCallMessage(accountId, callId, from, messages))
     }
+
+    override fun newCall(accountId: String, callId: String, to: String) {
+        events.tryEmit(RealJamiEvent.NewCall(accountId, callId, to))
+    }
+
+    // NOTE: real Callback signature, only callId — no accountId. Not a typo here.
+    override fun peerHold(callId: String, holding: Boolean) {
+        events.tryEmit(RealJamiEvent.PeerHoldChanged(callId, holding))
+    }
+
+    override fun audioMuted(callId: String, muted: Boolean) {
+        events.tryEmit(RealJamiEvent.RemoteAudioMutedChanged(callId, muted))
+    }
+
+    override fun videoMuted(callId: String, muted: Boolean) {
+        events.tryEmit(RealJamiEvent.RemoteVideoMutedChanged(callId, muted))
+    }
+
+    override fun mediaNegotiationStatus(callId: String, event: String, mediaList: VectMap) {
+        events.tryEmit(RealJamiEvent.MediaNegotiationStatus(callId, event, mediaList))
+    }
+
+    override fun mediaChangeRequested(accountId: String, callId: String, mediaList: VectMap) {
+        events.tryEmit(RealJamiEvent.MediaChangeRequested(accountId, callId, mediaList))
+    }
 }
 
 /**

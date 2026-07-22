@@ -36,7 +36,8 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
   - `RealJamiBridge.kt` — real engine calls (`JamiService.init/fini/addAccount/getAccountList/
     getAccountDetails/getVolatileAccountDetails/registerName/sendAccountTextMessage/
     getLastMessages/setIsComposing/setMessageDisplayed/getMessageStatus/placeCallWithMedia/
-    accept/hangUp/muteLocalMedia/addContact/removeContact/getContacts/getContactDetails/
+    accept/hangUp/hold/resume/muteLocalMedia/getCallList/getCallDetails/
+    answerMediaChangeRequest/addContact/removeContact/getContacts/getContactDetails/
     getTrustRequests/acceptTrustRequest/discardTrustRequest/sendTrustRequest`), matching
     `net.jami.daemon.JamiService`'s real API surface as found in
     `native/upstream/jami-daemon/bin/jni/*.i`. Includes `getJamiId`/`getRegisteredName`
@@ -46,9 +47,13 @@ reference, not guesswork — so a future build attempt (on a beefier machine, or
     `Contact::toMap()` (jami_contact.h) and `libjami::Account::TrustRequest` (account_const.h)
     produce them.
   - `RealChatMessage.kt` — wraps `libjami::Message` (the type `getLastMessages` returns).
-  - `RealJamiEvent.kt` — sealed class capturing the native signals we care about
-    (registration state, incoming call/message, contact added/removed, trust requests, name
-    registration result, composing/typing indicator).
+  - `RealCallSession.kt` — `RealCallSession`/`RealCallState`/`RealCallType` mapping
+    `getCallDetails`'s map, keyed exactly as `Call::getDetails()` builds it (src/call.cpp), plus
+    `RealCallState.toSimplified()` bucketing libjami's 11 raw call states down to the 5 states
+    Meshly's Phase 1 mock UI already knows.
+  - `RealJamiEvent.kt` — sealed class capturing the native signals we care about (registration
+    state, incoming call/message, new/hold/mute/media-negotiation call signals, contact
+    added/removed, trust requests, name registration result, composing/typing indicator).
   - `JamiCallbackAdapter.kt` — subclasses of the real `Callback` / `ConfigurationCallback`
     SWIG director classes that forward into `RealJamiEvent`, plus no-op stubs for the other
     five callback interfaces `JamiService.init()` requires (Presence, DataTransfer, Video,
@@ -143,7 +148,12 @@ Pulled directly from `native/upstream/jami-daemon/bin/jni/*.i` (SWIG module `Jam
 | Message delivery status by id | `JamiService.getMessageStatus(accountId, id)` — CAUTION: not confirmed to share an id space with the string `messageId` used elsewhere |
 | Place call | `JamiService.placeCallWithMedia(accountId, to, VectMap of StringMap media attributes)` |
 | Accept/reject/hang up | `JamiService.accept/refuse/hangUp(accountId, callId)` |
-| Mute | `JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO"/"MEDIA_TYPE_VIDEO", bool)` |
+| Hold/resume | `JamiService.hold`/`resume(accountId, callId)` |
+| Mute (local) | `JamiService.muteLocalMedia(accountId, callId, "MEDIA_TYPE_AUDIO"/"MEDIA_TYPE_VIDEO", bool)` |
+| Call state / details | `JamiService.getCallList(accountId)` / `getCallDetails(accountId, callId)` — keys: `CALL_TYPE` ("0"/"1"/"2"), `PEER_NUMBER`, `DISPLAY_NAME`, `CALL_STATE`, `TIMESTAMP_START`, `ACCOUNTID`, `AUDIO_MUTED`/`VIDEO_MUTED`/`AUDIO_ONLY` (`Call::Details`, call_const.h / `Call::getDetails()`, call.cpp) |
+| Call state values | `libjami::Call::StateEvent` (call_const.h): `INCOMING`/`CONNECTING`/`RINGING`/`CURRENT`/`HUNGUP`/`BUSY`/`PEER_BUSY`/`FAILURE`/`HOLD`/`INACTIVE`/`OVER` |
+| Peer hold/mute events | `Callback.peerHold(callId, holding)` / `audioMuted`/`videoMuted(callId, muted)` — no `accountId` param on these three |
+| Media renegotiation | `Callback.mediaNegotiationStatus(callId, event, mediaList)` (event: `NEGOTIATION_SUCCESS`/`NEGOTIATION_FAIL`) / `Callback.mediaChangeRequested(accountId, callId, mediaList)` → answer with `JamiService.answerMediaChangeRequest(accountId, callId, mediaList)` |
 | Add/remove contact | `JamiService.addContact(accountId, uri)` / `removeContact(accountId, uri, ban)` |
 | List contacts | `JamiService.getContacts(accountId)` / `getContactDetails(accountId, uri)` — keys: `id`, `added`, `removed`, `conversationId`, `confirmed`, `banned` (`Contact::toMap()`, jami_contact.h) |
 | Pending incoming requests | `JamiService.getTrustRequests(accountId)` — keys: `from`, `received`, `payload`, `conversationId` (`libjami::Account::TrustRequest`, account_const.h) |

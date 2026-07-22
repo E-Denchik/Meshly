@@ -47,7 +47,43 @@ sealed class RealJamiEvent {
         val callId: String,
         val state: String,
         val detailCode: Int
-    ) : RealJamiEvent()
+    ) : RealJamiEvent() {
+        /** [state] parsed against the known `libjami::Call::StateEvent` values; see [RealCallState]. */
+        val parsedState: RealCallState get() = RealCallState.fromWireValue(state)
+    }
+
+    /**
+     * A call object was created daemon-side for an outgoing call (accepted/incoming calls are
+     * signaled via [IncomingCall] instead). Maps to `Callback.newCall(accountId, callId, to)`.
+     */
+    data class NewCall(val accountId: String, val callId: String, val to: String) : RealJamiEvent()
+
+    /**
+     * The peer put the call on hold (or took it off hold). Maps to `Callback.peerHold(callId,
+     * holding)` — note this signal carries only `callId`, no `accountId` (unlike almost every
+     * other call signal), matching the real `Callback` interface exactly.
+     */
+    data class PeerHoldChanged(val callId: String, val holding: Boolean) : RealJamiEvent()
+
+    /** Remote peer's mute state changed. Maps to `Callback.audioMuted(callId, muted)`. */
+    data class RemoteAudioMutedChanged(val callId: String, val muted: Boolean) : RealJamiEvent()
+
+    /** Remote peer's camera mute state changed. Maps to `Callback.videoMuted(callId, muted)`. */
+    data class RemoteVideoMutedChanged(val callId: String, val muted: Boolean) : RealJamiEvent()
+
+    /**
+     * Result of ICE/media negotiation for a call. `event` is one of libjami's
+     * `MediaNegotiationStatusEvents` (src/jami/media_const.h): `NEGOTIATION_SUCCESS` /
+     * `NEGOTIATION_FAIL`. Maps to `Callback.mediaNegotiationStatus(callId, event, mediaList)`.
+     */
+    data class MediaNegotiationStatus(val callId: String, val event: String, val mediaList: VectMap) : RealJamiEvent()
+
+    /**
+     * The peer wants to change the call's media (e.g. escalate an audio call to video). Maps to
+     * `Callback.mediaChangeRequested(accountId, callId, mediaList)` — answer it via
+     * [RealJamiBridge.answerMediaChangeRequest].
+     */
+    data class MediaChangeRequested(val accountId: String, val callId: String, val mediaList: VectMap) : RealJamiEvent()
 
     data class IncomingCallMessage(
         val accountId: String,
