@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ import org.meshly.app.data.model.MessageStatus
 data class ChatMessageEntity(
     @PrimaryKey val id: String,
     val conversationId: String,
-    val senderJamiId: String,
+    val senderToxId: String,
     val text: String,
     val timestamp: Long,
     val status: String,
@@ -40,7 +40,7 @@ data class ChatMessageEntity(
         return ChatMessage(
             id = id,
             conversationId = conversationId,
-            senderJamiId = senderJamiId,
+            senderToxId = senderToxId,
             text = text,
             timestamp = timestamp,
             status = try { MessageStatus.valueOf(status) } catch (e: Exception) { MessageStatus.SENT },
@@ -54,7 +54,7 @@ data class ChatMessageEntity(
             return ChatMessageEntity(
                 id = message.id,
                 conversationId = message.conversationId,
-                senderJamiId = message.senderJamiId,
+                senderToxId = message.senderToxId,
                 text = message.text,
                 timestamp = message.timestamp,
                 status = message.status.name,

@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Incoming Call Lockscreen Display -->
@@ -60,7 +61,7 @@
 
         <!-- Foreground Service for P2P Daemon Presence -->
         <service
-            android:name=".service.JamiDaemonService"
+            android:name=".service.ToxDaemonService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />

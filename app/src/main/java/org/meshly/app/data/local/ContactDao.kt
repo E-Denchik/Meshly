@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,8 +34,8 @@ interface ContactDao {
     @Query("SELECT * FROM contacts WHERE status = :status")
     fun getContactsByStatus(status: String): Flow<List<ContactEntity>>
 
-    @Query("SELECT * FROM contacts WHERE jamiId = :jamiId LIMIT 1")
-    suspend fun getContactById(jamiId: String): ContactEntity?
+    @Query("SELECT * FROM contacts WHERE toxId = :toxId LIMIT 1")
+    suspend fun getContactById(toxId: String): ContactEntity?
 
     @Query("SELECT COUNT(*) FROM contacts")
     suspend fun countContacts(): Int
@@ -43,12 +43,12 @@ interface ContactDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateContact(contact: ContactEntity)
 
-    @Query("UPDATE contacts SET status = :status WHERE jamiId = :jamiId")
-    suspend fun updateStatus(jamiId: String, status: String)
+    @Query("UPDATE contacts SET status = :status WHERE toxId = :toxId")
+    suspend fun updateStatus(toxId: String, status: String)
 
-    @Query("UPDATE contacts SET presence = :presence WHERE jamiId = :jamiId")
-    suspend fun updatePresence(jamiId: String, presence: String)
+    @Query("UPDATE contacts SET presence = :presence WHERE toxId = :toxId")
+    suspend fun updatePresence(toxId: String, presence: String)
 
-    @Query("DELETE FROM contacts WHERE jamiId = :jamiId")
-    suspend fun deleteContact(jamiId: String)
+    @Query("DELETE FROM contacts WHERE toxId = :toxId")
+    suspend fun deleteContact(toxId: String)
 }

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,8 +31,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ScreenShare
-import androidx.compose.material.icons.automirrored.filled.StopScreenShare
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Mic
@@ -66,7 +64,7 @@ import org.meshly.app.ui.viewmodel.CallViewModel
 
 @Composable
 fun CallScreen(
-    peerJamiId: String,
+    peerToxId: String,
     peerDisplayName: String,
     callType: CallType,
     isOutgoing: Boolean,
@@ -75,11 +73,11 @@ fun CallScreen(
 ) {
     val activeCall by viewModel.activeCall.collectAsStateWithLifecycle()
 
-    LaunchedEffect(peerJamiId) {
+    LaunchedEffect(peerToxId) {
         if (isOutgoing) {
-            val session = viewModel.placeCall(peerJamiId, peerDisplayName, callType)
+            val session = viewModel.placeCall(peerToxId, peerDisplayName, callType)
             // Mock stage: no real peer signaling yet, simulate the callee either answering
-            // or not picking up, so the UI can be exercised end-to-end without native libjami.
+            // or not picking up, so the UI can be exercised end-to-end without native toxcore/ToxAV.
             delay(Random.nextLong(1200, 3000))
             if (Random.nextFloat() < 0.85f) {
                 viewModel.acceptCall(session.callId)
@@ -113,10 +111,9 @@ fun CallScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    val showsVisualPlaceholder = session?.isScreenSharing == true ||
-                        (callType == CallType.VIDEO && session?.isCameraOn == true)
-                    if (!showsVisualPlaceholder) {
-                        Avatar(name = peerDisplayName, seed = peerJamiId, size = 120.dp)
+                    val showsVideoPlaceholder = callType == CallType.VIDEO && session?.isCameraOn == true
+                    if (!showsVideoPlaceholder) {
+                        Avatar(name = peerDisplayName, seed = peerToxId, size = 120.dp)
                         Spacer(Modifier.height(24.dp))
                     }
 
@@ -131,14 +128,7 @@ fun CallScreen(
                         color = Color.White.copy(alpha = 0.7f)
                     )
 
-                    if (session?.isScreenSharing == true) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(stringResource(R.string.screen_share_placeholder), color = Color.White.copy(alpha = 0.5f))
-                        }
-                    } else if (callType == CallType.VIDEO && session?.isCameraOn == true) {
+                    if (showsVideoPlaceholder) {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center
@@ -169,17 +159,6 @@ fun CallScreen(
                         FilledTonalIconButton(onClick = { viewModel.flipCamera() }) {
                             Icon(Icons.Filled.Cameraswitch, contentDescription = stringResource(R.string.content_desc_flip_camera))
                         }
-                    }
-
-                    FilledTonalIconButton(onClick = { viewModel.toggleScreenShare() }) {
-                        Icon(
-                            imageVector = if (session?.isScreenSharing == true) {
-                                Icons.AutoMirrored.Filled.StopScreenShare
-                            } else {
-                                Icons.AutoMirrored.Filled.ScreenShare
-                            },
-                            contentDescription = stringResource(R.string.content_desc_toggle_screen_share)
-                        )
                     }
 
                     FilledIconButton(

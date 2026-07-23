@@ -1,3 +1,3 @@
-[submodule "native/upstream/jami-daemon"]
-	path = native/upstream/jami-daemon
-	url = https://github.com/savoirfairelinux/jami-daemon.git
+[submodule "native/upstream/c-toxcore"]
+	path = native/upstream/c-toxcore
+	url = https://github.com/TokTok/c-toxcore.git

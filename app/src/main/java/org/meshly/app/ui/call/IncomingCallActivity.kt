@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ class IncomingCallActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
 
-        val peerJamiId = intent.getStringExtra(EXTRA_JAMI_ID).orEmpty()
+        val peerToxId = intent.getStringExtra(EXTRA_TOX_ID).orEmpty()
         val peerDisplayName = intent.getStringExtra(EXTRA_DISPLAY_NAME).orEmpty()
         val callId = intent.getStringExtra(EXTRA_CALL_ID).orEmpty()
         val callType = CallType.valueOf(intent.getStringExtra(EXTRA_CALL_TYPE) ?: CallType.AUDIO.name)
@@ -52,7 +52,7 @@ class IncomingCallActivity : ComponentActivity() {
 
                 if (!accepted) {
                     IncomingCallScreen(
-                        peerJamiId = peerJamiId,
+                        peerToxId = peerToxId,
                         peerDisplayName = peerDisplayName,
                         callType = callType,
                         onAccept = {
@@ -66,7 +66,7 @@ class IncomingCallActivity : ComponentActivity() {
                     )
                 } else {
                     CallScreen(
-                        peerJamiId = peerJamiId,
+                        peerToxId = peerToxId,
                         peerDisplayName = peerDisplayName,
                         callType = callType,
                         isOutgoing = false,
@@ -94,7 +94,7 @@ class IncomingCallActivity : ComponentActivity() {
     }
 
     companion object {
-        const val EXTRA_JAMI_ID = "extra_jami_id"
+        const val EXTRA_TOX_ID = "extra_tox_id"
         const val EXTRA_DISPLAY_NAME = "extra_display_name"
         const val EXTRA_CALL_ID = "extra_call_id"
         const val EXTRA_CALL_TYPE = "extra_call_type"

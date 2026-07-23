@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import org.meshly.app.core.JamiBridge
+import org.meshly.app.core.ToxBridge
 import org.meshly.app.data.local.AppDatabase
 
 class MeshlyApplication : Application() {
@@ -34,7 +34,7 @@ class MeshlyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        JamiBridge.getInstance().startDaemon()
+        ToxBridge.getInstance().startDaemon()
     }
 
     private fun createNotificationChannels() {

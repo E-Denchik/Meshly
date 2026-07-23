@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,11 @@
 package org.meshly.app.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.data.model.Account
@@ -38,27 +35,8 @@ import java.io.IOException
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val accountRepository = AccountRepository(application)
-    private val prefs = application.getSharedPreferences("meshly_network_settings", Context.MODE_PRIVATE)
 
     val account: StateFlow<Account?> = accountRepository.currentAccount
-
-    private val _upnpEnabled = MutableStateFlow(prefs.getBoolean(KEY_UPNP, true))
-    val upnpEnabled: StateFlow<Boolean> = _upnpEnabled.asStateFlow()
-
-    private val _turnEnabled = MutableStateFlow(prefs.getBoolean(KEY_TURN, true))
-    val turnEnabled: StateFlow<Boolean> = _turnEnabled.asStateFlow()
-
-    fun setUpnpEnabled(enabled: Boolean) {
-        _upnpEnabled.value = enabled
-        prefs.edit().putBoolean(KEY_UPNP, enabled).apply()
-        accountRepository.updateNetworkSettings(upnpEnabled = enabled)
-    }
-
-    fun setTurnEnabled(enabled: Boolean) {
-        _turnEnabled.value = enabled
-        prefs.edit().putBoolean(KEY_TURN, enabled).apply()
-        accountRepository.updateNetworkSettings(turnEnabled = enabled)
-    }
 
     fun exportAccount(password: String): String = accountRepository.exportAccountBackup(password)
 
@@ -82,7 +60,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * Captures this process's own logcat output (no special permission needed to read your own
      * app's log lines) into a file under the app's cache dir, and returns a `content://` URI for
      * it via [FileProvider] so it can be shared/saved through any app. Returns null on I/O
-     * failure. Once the real libjami daemon exists, its native logs should be appended here too.
+     * failure. Once the real toxcore/ToxAV daemon exists, its native logs should be appended here too.
      */
     suspend fun exportDiagnosticLogs(): Uri? = withContext(Dispatchers.IO) {
         val context = getApplication<Application>()
@@ -100,10 +78,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         } catch (e: IOException) {
             null
         }
-    }
-
-    companion object {
-        private const val KEY_UPNP = "upnp_enabled"
-        private const val KEY_TURN = "turn_enabled"
     }
 }

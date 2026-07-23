@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,20 +28,18 @@ import org.meshly.app.data.model.PresenceStatus
 
 @Entity(tableName = "contacts")
 data class ContactEntity(
-    @PrimaryKey val jamiId: String,
+    @PrimaryKey val toxId: String,
     val displayName: String,
-    val username: String?,
     val status: String,
     val presence: String,
     val addedAt: Long
 ) {
     fun toDomain(): Contact {
         return Contact(
-            jamiId = jamiId,
+            toxId = toxId,
             displayName = displayName,
-            username = username,
             status = try { ContactStatus.valueOf(status) } catch (e: Exception) { ContactStatus.CONFIRMED },
-            presence = try { PresenceStatus.valueOf(presence) } catch (e: Exception) { PresenceStatus.OFFLINE },
+            presence = try { PresenceStatus.valueOf(presence) } catch (e: Exception) { PresenceStatus.UNKNOWN },
             addedAt = addedAt
         )
     }
@@ -49,9 +47,8 @@ data class ContactEntity(
     companion object {
         fun fromDomain(contact: Contact): ContactEntity {
             return ContactEntity(
-                jamiId = contact.jamiId,
+                toxId = contact.toxId,
                 displayName = contact.displayName,
-                username = contact.username,
                 status = contact.status.name,
                 presence = contact.presence.name,
                 addedAt = contact.addedAt

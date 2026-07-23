@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,12 +35,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Videocam
@@ -69,17 +71,22 @@ import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
+import org.meshly.app.data.model.PresenceStatus
 import org.meshly.app.ui.viewmodel.ChatViewModel
+import org.meshly.app.ui.viewmodel.ContactViewModel
 
 @Composable
 fun ChatScreen(
-    peerJamiId: String,
+    peerToxId: String,
     peerDisplayName: String,
     onBack: () -> Unit,
     onStartCall: (CallType) -> Unit,
-    viewModel: ChatViewModel = viewModel()
+    viewModel: ChatViewModel = viewModel(),
+    contactViewModel: ContactViewModel = viewModel()
 ) {
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val contacts by contactViewModel.contacts.collectAsStateWithLifecycle()
+    val peerPresence = contacts.firstOrNull { it.toxId == peerToxId }?.presence ?: PresenceStatus.UNKNOWN
     var draft by remember { mutableStateOf("") }
     var pendingAttachment by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
@@ -99,14 +106,19 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(peerJamiId) {
-        viewModel.setConversationId(peerJamiId)
+    LaunchedEffect(peerToxId) {
+        viewModel.setConversationId(peerToxId)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(peerDisplayName) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.content_desc_back))
+                    }
+                },
                 actions = {
                     IconButton(onClick = { onStartCall(CallType.AUDIO) }) {
                         Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
@@ -163,13 +175,25 @@ fun ChatScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            reverseLayout = true,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items(messages.asReversed(), key = { it.id }) { message ->
-                MessageBubble(message)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (peerPresence != PresenceStatus.ONLINE) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                    Text(
+                        stringResource(R.string.chat_peer_offline_banner),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().weight(1f),
+                reverseLayout = true,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(messages.asReversed(), key = { it.id }) { message ->
+                    MessageBubble(message)
+                }
             }
         }
     }
@@ -220,7 +244,11 @@ private fun MessageBubble(message: ChatMessage) {
                         imageVector = message.status.toIcon(),
                         contentDescription = stringResource(message.status.toLabelRes()),
                         modifier = Modifier.padding(end = 4.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (message.status == MessageStatus.FAILED) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
             }
@@ -231,14 +259,13 @@ private fun MessageBubble(message: ChatMessage) {
 private fun MessageStatus.toIcon() = when (this) {
     MessageStatus.SENDING -> Icons.Filled.Schedule
     MessageStatus.SENT -> Icons.Filled.Done
-    MessageStatus.DELIVERED, MessageStatus.READ -> Icons.Filled.DoneAll
-    MessageStatus.FAILED -> Icons.Filled.Schedule
+    MessageStatus.DELIVERED -> Icons.Filled.DoneAll
+    MessageStatus.FAILED -> Icons.Filled.ErrorOutline
 }
 
 private fun MessageStatus.toLabelRes() = when (this) {
     MessageStatus.SENDING -> R.string.message_status_sending
     MessageStatus.SENT -> R.string.message_status_sent
     MessageStatus.DELIVERED -> R.string.message_status_delivered
-    MessageStatus.READ -> R.string.message_status_read
     MessageStatus.FAILED -> R.string.message_status_failed
 }

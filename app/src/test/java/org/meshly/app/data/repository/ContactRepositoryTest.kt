@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,60 +35,63 @@ class ContactRepositoryTest {
     private val dao = FakeContactDao()
     private val repository = ContactRepository(dao)
 
+    private fun fakeToxId(): String =
+        UUID.randomUUID().toString().replace("-", "").let { (it + it).take(76) }
+
     @Test
     fun `addContactRequest starts a contact as pending outgoing`() = runBlocking {
-        val jamiId = "jami:${UUID.randomUUID()}"
-        repository.addContactRequest(jamiId, "Alice")
+        val toxId = fakeToxId()
+        repository.addContactRequest(toxId, "Alice")
 
         val contacts = repository.allContacts.first()
-        val contact = contacts.single { it.jamiId == jamiId }
+        val contact = contacts.single { it.toxId == toxId }
         assertEquals(ContactStatus.PENDING_OUTGOING, contact.status)
     }
 
     @Test
     fun `acceptContactRequest transitions pending incoming to confirmed`() = runBlocking {
-        val jamiId = "jami:${UUID.randomUUID()}"
-        val incoming = Contact(jamiId = jamiId, displayName = "Bob", status = ContactStatus.PENDING_INCOMING)
+        val toxId = fakeToxId()
+        val incoming = Contact(toxId = toxId, displayName = "Bob", status = ContactStatus.PENDING_INCOMING)
         dao.insertOrUpdateContact(org.meshly.app.data.local.ContactEntity.fromDomain(incoming))
 
         repository.acceptContactRequest(incoming)
 
-        val contact = repository.allContacts.first().single { it.jamiId == jamiId }
+        val contact = repository.allContacts.first().single { it.toxId == toxId }
         assertEquals(ContactStatus.CONFIRMED, contact.status)
     }
 
     @Test
     fun `removeContact deletes the contact from the list`() = runBlocking {
-        val jamiId = "jami:${UUID.randomUUID()}"
-        repository.addContactRequest(jamiId, "Carol")
-        assertTrue(repository.allContacts.first().any { it.jamiId == jamiId })
+        val toxId = fakeToxId()
+        repository.addContactRequest(toxId, "Carol")
+        assertTrue(repository.allContacts.first().any { it.toxId == toxId })
 
-        repository.removeContact(jamiId)
+        repository.removeContact(toxId)
 
-        assertTrue(repository.allContacts.first().none { it.jamiId == jamiId })
+        assertTrue(repository.allContacts.first().none { it.toxId == toxId })
     }
 
     @Test
     fun `blockContact marks a confirmed contact as blocked without deleting it`() = runBlocking {
-        val jamiId = "jami:${UUID.randomUUID()}"
-        val confirmed = Contact(jamiId = jamiId, displayName = "Dave", status = ContactStatus.CONFIRMED)
+        val toxId = fakeToxId()
+        val confirmed = Contact(toxId = toxId, displayName = "Dave", status = ContactStatus.CONFIRMED)
         dao.insertOrUpdateContact(org.meshly.app.data.local.ContactEntity.fromDomain(confirmed))
 
-        repository.blockContact(jamiId)
+        repository.blockContact(toxId)
 
-        val contact = repository.allContacts.first().single { it.jamiId == jamiId }
+        val contact = repository.allContacts.first().single { it.toxId == toxId }
         assertEquals(ContactStatus.BLOCKED, contact.status)
     }
 
     @Test
     fun `unblockContact restores a blocked contact to confirmed`() = runBlocking {
-        val jamiId = "jami:${UUID.randomUUID()}"
-        val blocked = Contact(jamiId = jamiId, displayName = "Erin", status = ContactStatus.BLOCKED)
+        val toxId = fakeToxId()
+        val blocked = Contact(toxId = toxId, displayName = "Erin", status = ContactStatus.BLOCKED)
         dao.insertOrUpdateContact(org.meshly.app.data.local.ContactEntity.fromDomain(blocked))
 
         repository.unblockContact(blocked)
 
-        val contact = repository.allContacts.first().single { it.jamiId == jamiId }
+        val contact = repository.allContacts.first().single { it.toxId == toxId }
         assertEquals(ContactStatus.CONFIRMED, contact.status)
     }
 }

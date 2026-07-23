@@ -10,8 +10,8 @@
     <string name="notification_channel_message_desc">新的私信通知</string>
 
     <!-- Foreground service / notification content -->
-    <string name="notification_daemon_title">Meshly P2P 核心</string>
-    <string name="notification_daemon_text">已连接到去中心化 OpenDHT 网络</string>
+    <string name="notification_daemon_title">Meshly Tox 核心</string>
+    <string name="notification_daemon_text">已连接到去中心化 Tox 网络</string>
     <string name="notification_incoming_audio_call">语音来电</string>
     <string name="notification_incoming_video_call">视频来电</string>
     <string name="notification_message_attachment_fallback">发送了一个附件</string>
@@ -36,10 +36,8 @@
     <string name="content_desc_toggle_mute">切换静音</string>
     <string name="content_desc_toggle_camera">切换摄像头开关</string>
     <string name="content_desc_flip_camera">切换前后摄像头</string>
-    <string name="content_desc_toggle_screen_share">切换屏幕共享</string>
     <string name="content_desc_hang_up">挂断</string>
-    <string name="video_preview_placeholder">视频预览区域(第二阶段:libjami 视频输出)</string>
-    <string name="screen_share_placeholder">正在共享屏幕(第二阶段:MediaProjection + libjami 视频输出)</string>
+    <string name="video_preview_placeholder">视频预览区域(第二阶段:ToxAV 视频输出)</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">聊天</string>
@@ -57,15 +55,19 @@
     <string name="calls_empty">添加一位已确认的联系人即可发起通话。</string>
     <string name="ongoing_audio_call_with">正在与 %1$s 进行语音通话</string>
     <string name="ongoing_video_call_with">正在与 %1$s 进行视频通话</string>
+    <string name="content_desc_back">返回</string>
     <string name="content_desc_audio_call">语音通话</string>
     <string name="content_desc_video_call">视频通话</string>
+    <string name="call_target_offline_hint">该联系人当前离线,暂时无法拨打</string>
 
     <!-- Contacts screen -->
     <string name="contacts_title">联系人</string>
-    <string name="contact_search_label">Jami ID 或用户名</string>
-    <string name="contact_search_error_invalid">请输入完整的 Jami ID(jami: 加 40 位十六进制字符)或有效的用户名</string>
+    <string name="contact_search_label">Tox ID</string>
+    <string name="contact_search_error_invalid">请输入有效的 Tox ID(76 位十六进制字符)</string>
     <string name="contact_search_error_duplicate">已是联系人或已有待处理的请求</string>
     <string name="content_desc_add_contact">添加联系人</string>
+    <string name="content_desc_scan_qr">扫描二维码</string>
+    <string name="contact_request_message_label">留言(可选)</string>
     <string name="tab_contacts_count">联系人 (%1$d)</string>
     <string name="tab_requests_count">请求 (%1$d)</string>
     <string name="tab_blocked_count">已屏蔽 (%1$d)</string>
@@ -89,16 +91,19 @@
     <string name="message_status_delivered">已送达</string>
     <string name="message_status_read">已读</string>
     <string name="message_status_failed">发送失败</string>
+    <string name="chat_peer_offline_banner">该联系人当前离线 — Tox 要求双方同时在线,消息才能送达。</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">由 GNU Jami 提供支持的无服务器、端到端加密 P2P 消息与通话应用。</string>
-    <string name="action_create_new_id">创建新的 Jami ID</string>
+    <string name="onboarding_tagline">由 Tox 提供支持的无服务器、端到端加密 P2P 消息与通话应用。</string>
+    <string name="action_create_new_id">创建新的 Tox ID</string>
     <string name="action_import_existing">导入现有账号</string>
-    <string name="choose_username_title">选择用户名(可选)</string>
-    <string name="choose_username_desc">您的 Jami ID 密钥对将在本机生成。注册用户名可让其他人通过名称而不是原始 ID 找到您。</string>
-    <string name="label_username">用户名</string>
-    <string name="action_generate_id">生成 Jami ID</string>
+    <string name="choose_nickname_title">设置本地昵称(可选)</string>
+    <string name="choose_nickname_desc">您的 Tox ID 密钥对将在本机生成。您可以选择设置一个本地昵称——它不会被注册或用于搜索,只有您已添加的联系人才能看到。</string>
+    <string name="label_nickname">昵称</string>
+    <string name="action_generate_id">生成 Tox ID</string>
     <string name="action_back">返回</string>
+    <string name="action_continue">继续</string>
+    <string name="own_tox_id_qr_title">我的 Tox ID</string>
     <string name="import_account_title">导入账号存档</string>
     <string name="import_account_desc">粘贴在另一台设备上创建的、受密码保护的账号备份(在该设备的“设置”中选择“导出账号”),然后输入其密码。</string>
     <string name="label_backup_archive">备份存档</string>
@@ -108,7 +113,7 @@
 
     <!-- Export account dialog -->
     <string name="export_account_title">导出账号</string>
-    <string name="export_account_warning">请为您的密钥备份设置密码保护。任何拥有此存档和密码的人都可以冒充您的 Jami ID。</string>
+    <string name="export_account_warning">请为您的密钥备份设置密码保护。任何拥有此存档和密码的人都可以冒充您的 Tox ID。</string>
     <string name="label_confirm_password">确认密码</string>
     <string name="export_ready_hint">存档已就绪。请复制它和密码,以便在其他设备上恢复账号:</string>
     <string name="action_export">导出</string>
@@ -117,18 +122,16 @@
     <!-- Settings screen -->
     <string name="settings_title">设置</string>
     <string name="section_account">账号</string>
-    <string name="label_no_username">尚未注册用户名</string>
+    <string name="label_no_nickname">未设置昵称</string>
+    <string name="content_desc_show_qr">以二维码显示我的 Tox ID</string>
     <string name="export_account_item_title">导出账号</string>
-    <string name="export_account_item_desc">受密码保护的 Jami ID 密钥备份</string>
+    <string name="export_account_item_desc">受密码保护的 Tox ID 密钥备份</string>
     <string name="section_network">网络</string>
-    <string name="upnp_title">UPnP</string>
-    <string name="upnp_desc">自动进行路由器端口映射,以实现直接的 P2P 连接</string>
-    <string name="turn_title">TURN 中继</string>
-    <string name="turn_desc">当直接 P2P 连接失败时使用的备用中继</string>
-    <string name="bootstrap_nodes_title">DHT 引导节点</string>
-    <string name="bootstrap_nodes_desc">接入 OpenDHT 网络的入口点。请至少保留两个独立节点,以便在其中一个失效时应用仍可正常运行。</string>
+    <string name="bootstrap_nodes_title">引导节点</string>
+    <string name="bootstrap_nodes_desc">接入 Tox 网络的入口点。请至少保留两个独立节点,以便在其中一个失效时应用仍可正常运行。</string>
     <string name="content_desc_remove_node">移除节点</string>
-    <string name="label_host_port">主机:端口</string>
+    <string name="label_host_port_pubkey">主机:端口:公钥</string>
+    <string name="bootstrap_node_invalid_format">请按“主机:端口:公钥”格式输入引导节点</string>
     <string name="content_desc_add_node">添加节点</string>
     <string name="section_diagnostics">诊断</string>
     <string name="export_logs_title">导出诊断日志</string>

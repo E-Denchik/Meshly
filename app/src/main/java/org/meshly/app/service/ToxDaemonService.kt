@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,14 +35,14 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.R
-import org.meshly.app.core.JamiBridge
-import org.meshly.app.core.JamiEvent
+import org.meshly.app.core.ToxBridge
+import org.meshly.app.core.ToxEvent
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.ui.MainActivity
 import org.meshly.app.ui.call.IncomingCallActivity
 
-class JamiDaemonService : Service() {
+class ToxDaemonService : Service() {
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob)
@@ -50,7 +50,7 @@ class JamiDaemonService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, createNotification())
-        JamiBridge.getInstance().startDaemon()
+        ToxBridge.getInstance().startDaemon()
         observeIncomingCalls()
         observeIncomingMessages()
     }
@@ -67,17 +67,17 @@ class JamiDaemonService : Service() {
     }
 
     private fun observeIncomingCalls() {
-        JamiBridge.getInstance().events
-            .filterIsInstance<JamiEvent.IncomingCall>()
+        ToxBridge.getInstance().events
+            .filterIsInstance<ToxEvent.IncomingCall>()
             .onEach { event -> showIncomingCallFullScreenIntent(event) }
             .launchIn(serviceScope)
     }
 
-    private fun showIncomingCallFullScreenIntent(event: JamiEvent.IncomingCall) {
+    private fun showIncomingCallFullScreenIntent(event: ToxEvent.IncomingCall) {
         val session = event.session
         val fullScreenIntent = Intent(this, IncomingCallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(IncomingCallActivity.EXTRA_JAMI_ID, session.peerJamiId)
+            putExtra(IncomingCallActivity.EXTRA_TOX_ID, session.peerToxId)
             putExtra(IncomingCallActivity.EXTRA_DISPLAY_NAME, session.peerDisplayName)
             putExtra(IncomingCallActivity.EXTRA_CALL_ID, session.callId)
             putExtra(IncomingCallActivity.EXTRA_CALL_TYPE, session.callType.name)
@@ -111,27 +111,27 @@ class JamiDaemonService : Service() {
     }
 
     /** Posts a heads-up notification for an incoming direct message (FR-5.1), no FCM involved -
-     *  the event arrives straight from [JamiBridge]'s own event flow. Tapping it deep-links into
+     *  the event arrives straight from [ToxBridge]'s own event flow. Tapping it deep-links into
      *  that conversation via [MainActivity]'s deep-link extras. */
     private fun observeIncomingMessages() {
-        JamiBridge.getInstance().events
-            .filterIsInstance<JamiEvent.MessageReceived>()
+        ToxBridge.getInstance().events
+            .filterIsInstance<ToxEvent.MessageReceived>()
             .onEach { event -> showMessageNotification(event.message) }
             .launchIn(serviceScope)
     }
 
     private suspend fun showMessageNotification(message: ChatMessage) {
         val contactDao = (applicationContext as MeshlyApplication).database.contactDao()
-        val displayName = contactDao.getContactById(message.senderJamiId)?.displayName ?: message.senderJamiId
+        val displayName = contactDao.getContactById(message.senderToxId)?.displayName ?: message.senderToxId
 
         val contentIntent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra(MainActivity.EXTRA_DEEPLINK_JAMI_ID, message.senderJamiId)
+            putExtra(MainActivity.EXTRA_DEEPLINK_TOX_ID, message.senderToxId)
             putExtra(MainActivity.EXTRA_DEEPLINK_DISPLAY_NAME, displayName)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            message.senderJamiId.hashCode(),
+            message.senderToxId.hashCode(),
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -146,7 +146,7 @@ class JamiDaemonService : Service() {
             .setContentIntent(pendingIntent)
             .build()
 
-        getSystemService(NotificationManager::class.java).notify(message.senderJamiId.hashCode(), notification)
+        getSystemService(NotificationManager::class.java).notify(message.senderToxId.hashCode(), notification)
     }
 
     private fun createNotification(): Notification {

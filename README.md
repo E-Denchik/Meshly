@@ -4,10 +4,12 @@
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 Meshly is a serverless, end-to-end encrypted peer-to-peer messenger and calling app for
-Android, built on top of [GNU Jami](https://jami.net)'s core engine (`libjami` /
-`jami-daemon`). No central server: accounts, presence, messaging, and calls are all
-carried over OpenDHT with PJSIP/ICE for media negotiation and GnuTLS for transport
-security.
+Android, built on top of [Tox](https://tox.chat)'s core engine (`c-toxcore` /
+`ToxAV`). No central server: peer discovery happens over a Kademlia-like distributed
+hash table (DHT), messages and calls travel directly between peers over UDP (falling
+back to TCP relays when direct UDP isn't reachable), authenticated and encrypted
+end-to-end via `libsodium` with forward secrecy, and calls carry Opus-encoded audio and
+VP8-encoded video via ToxAV.
 
 > This README is a living document — it's kept in sync with the state of the repo as
 > the project moves through phases. If something here looks stale, the code is the
@@ -18,11 +20,11 @@ security.
 | Phase | Scope | State |
 |---|---|---|
 | **Phase 1** | Android app skeleton, full Jetpack Compose UI, Room local cache, Clean Architecture layering, mock/stub JNI engine | ✅ Done. Builds (`assembleDebug`), unit tests pass, manually verified end-to-end on a physical device (onboarding → contacts → chat → calls) |
-| **Phase 2** | Real `libjami` native integration (OpenDHT, PJSIP, GnuTLS, FFmpeg via NDK) | 🚧 Scaffolding only — CMake/Gradle wiring and the real JNI contract are in place and reviewed against upstream source, but the native build has not actually been compiled yet (needs ~30-50GB disk + several hours of CPU time; see [`PHASE2_BUILD.md`](PHASE2_BUILD.md)) |
+| **Phase 2** | Real `c-toxcore`/`ToxAV` native integration (libsodium, opus, libvpx via NDK) | 🚧 Scaffolding only — CMake/Gradle wiring and the real JNI contract are in place and reviewed against upstream source, but the native build has not actually been compiled yet (needs Android builds of libsodium/opus/libvpx plus low single-digit GB disk and well under an hour of CPU time per ABI — much smaller than a Jami-based engine would have needed; see [`PHASE2_BUILD_TOX.md`](PHASE2_BUILD_TOX.md)) |
 
-Right now the app runs entirely on a **mock engine** (`org.meshly.app.core.JamiBridge`):
+Right now the app runs entirely on a **mock engine** (`org.meshly.app.core.ToxBridge`):
 account creation, contacts, messaging, and calls are all simulated in-process so the
-full UI is exercisable without the native daemon. This is intentional — see
+full UI is exercisable without the native Tox engine. This is intentional — see
 [Architecture](#architecture) below.
 
 **Design system**: `ui/theme/` defines a dedicated Meshly color palette (light + dark, full
@@ -50,19 +52,20 @@ Three layers, top to bottom:
                                │ StateFlow / ViewModel
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    Bridge Layer (Kotlin)                    │
-│  JamiDaemonService (foreground service) · Repositories       │
-│  JamiBridge: maps native/mock events to Kotlin Flow          │
+│  ToxDaemonService (foreground service) · Repositories        │
+│  ToxBridge: maps native/mock events to Kotlin Flow           │
 │  Room database (contacts, chat history)                      │
 └──────────────────────────────┬──────────────────────────────┘
                                │ JNI (mock today, real in Phase 2)
 ┌──────────────────────────────▼──────────────────────────────┐
 │                  Core / Daemon Layer                        │
-│  libjami (jami-daemon) · OpenDHT · PJSIP · GnuTLS · FFmpeg   │
+│  c-toxcore (DHT, UDP/TCP transport, libsodium) · ToxAV       │
+│  (Opus audio, VP8 video via libvpx)                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The Bridge Layer only ever talks to a `JamiBridge`-shaped API. Phase 1 backs it with an
-in-process mock; Phase 2 will back it with `daemon/`'s real native engine. The UI and
+The Bridge Layer only ever talks to a `ToxBridge`-shaped API. Phase 1 backs it with an
+in-process mock; Phase 2 will back it with `daemon-tox/`'s real native engine. The UI and
 repositories don't need to change when that swap happens.
 
 ## Project layout
@@ -70,25 +73,31 @@ repositories don't need to change when that swap happens.
 ```
 app/                          Android app module (Phase 1, always builds)
   src/main/java/org/meshly/app/
-    core/JamiBridge.kt         Mock engine: simulates the daemon in pure Kotlin
+    core/ToxBridge.kt          Mock engine: simulates the Tox daemon in pure Kotlin
     data/model/                Domain models (Account, Contact, ChatMessage, CallSession)
     data/local/                Room entities + DAOs
     data/repository/           Account/Contact/Chat/Call repositories
-    service/                   JamiDaemonService (foreground presence), CallService
+    service/                   ToxDaemonService (foreground presence), CallService
     ui/                        Compose screens, navigation, ViewModels
-  src/test/                    Unit tests (repositories, JamiBridge mock, fakes)
+  src/test/                    Unit tests (repositories, ToxBridge mock, fakes)
 
-daemon/                       Phase 2 native module (NOT built yet, NOT wired into :app)
-  build.gradle.kts             CMake wiring pointed at native/upstream/jami-daemon
-  src/main/java/org/meshly/app/daemon/
-    RealJamiBridge.kt           Real JamiService calls (source-cited against upstream)
-    RealJamiEvent.kt            Sealed class for native signals
-    JamiCallbackAdapter.kt      SWIG director callback adapters
+daemon-tox/                   Phase 2 native module (NOT built yet, NOT wired into :app)
+  CMakeLists.txt                Hand-written: add_subdirectory()s c-toxcore + links a
+                                 hand-written JNI wrapper (no SWIG on the Tox side)
+  build.gradle.kts              Gradle/CMake wiring
+  src/main/cpp/tox_jni.c        Hand-written JNI glue against the real tox_*/toxav_* API
+  src/main/java/org/meshly/app/daemontox/
+    ToxNative.kt                 external fun JNI declarations (source-cited against upstream)
+    ToxBridge.kt                 Singleton wrapping ToxNative, SharedFlow<ToxDaemonEvent>
+    ToxDaemonEvent.kt            Sealed class for native signals
+    ToxCallbackAdapter.kt        Documents the hand-written-JNI callback dispatch pattern
+    ToxFriendInfo.kt             Assembled per-friend state
+    ToxCallSession.kt            Assembled per-call state
 
-native/upstream/jami-daemon/   Git submodule: real GNU Jami daemon source (reference +
+native/upstream/c-toxcore/    Git submodule: real c-toxcore/ToxAV source (reference +
                                eventual build target for Phase 2)
 
-PHASE2_BUILD.md                Exact remaining steps to compile the real native engine
+PHASE2_BUILD_TOX.md           Exact remaining steps to compile the real native engine
 ```
 
 ## Building
@@ -100,8 +109,8 @@ cd Meshly
 ./gradlew test            # unit tests
 ```
 
-`daemon/` is intentionally **not** included in `settings.gradle.kts` yet, so none of the
-above touches the native build. See `PHASE2_BUILD.md` before trying to build it.
+`daemon-tox/` is intentionally **not** included in `settings.gradle.kts` yet, so none of
+the above touches the native build. See `PHASE2_BUILD_TOX.md` before trying to build it.
 
 ### Running on a device
 
@@ -121,7 +130,7 @@ options.
 `.github/workflows/android-ci.yml` runs `./gradlew test assembleDebug` on every push/PR
 to `main` using GitHub's free hosted runners, and uploads the resulting debug APK and
 unit test reports as workflow artifacts. It checks out without submodules, since `:app`
-doesn't depend on `:daemon`/`native/upstream/jami-daemon` (Phase 2, not built yet).
+doesn't depend on `:daemon-tox`/`native/upstream/c-toxcore` (Phase 2, not built yet).
 
 ## Distribution
 
@@ -141,7 +150,8 @@ Per the project's goal of not depending on a single distribution channel:
 ## Localization
 
 All user-facing UI text is externalized to Android string resources
-(`app/src/main/res/values*/strings.xml`), not hardcoded in Compose. The app ships with:
+(`app/src/main/res/values*/strings.xml`), not hardcoded in Compose. The app ships resource
+folders for several locales:
 
 | Locale | Resource folder |
 |---|---|
@@ -165,21 +175,23 @@ language feature - it lets a user override Meshly's language independently of th
 system language from Settings > Apps > Meshly > Language, without needing an in-app language
 switcher UI. On API < 33 this is simply ignored; the base auto-detection above still applies.
 
-Product/technical terms (`Jami ID`, `OpenDHT`, `UPnP`, `TURN`, `libjami`, `GNU Jami`,
-`MediaProjection`) are intentionally left untranslated, matching how they're used in
-Jami's own upstream clients. New user-facing strings should be added to `values/` first
-and then mirrored into every other locale folder to keep them in sync — nothing enforces
-this automatically today.
+New user-facing strings should be added to `values/` first and then mirrored into every
+other locale folder to keep them in sync — nothing enforces this automatically today.
 
 ## License
 
-Meshly links against `libjami`, which is GPLv3. Every source file in this repo carries
-a GPLv3 header accordingly — see [`LICENSE`](LICENSE) at the repo root for the full
-license text (copied verbatim from the `jami-daemon` submodule's own `COPYING`, so it's
-available even for a shallow checkout without submodules, e.g. in CI).
+Meshly links against `c-toxcore`, which is GPL-3.0-or-later. Every source file in this
+repo carries a GPLv3 header accordingly — see [`LICENSE`](LICENSE) at the repo root for
+the full license text. `native/upstream/c-toxcore/LICENSE` (in the submodule, once
+checked out) carries the same GPLv3 text.
 
 ## Networking defaults
 
-- Default OpenDHT bootstrap nodes: `bootstrap.jami.net:4222`, `bootstrap.ring.cx:4222`
-  (official GNU Jami nodes — configurable per-account in Settings)
+- Default Tox bootstrap nodes (well-known public nodes, `host:port:public-key-hex` —
+  configurable per-account in Settings). The list below was spot-checked against
+  [nodes.tox.chat](https://nodes.tox.chat)'s live status page while writing this
+  document (2026-07-23) — bootstrap node uptime/ownership rotates over time, so
+  re-check that page for the current list rather than treating this as permanent:
+  - `node.tox.biribiri.org:33445:F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67`
+  - `tox1.mf-net.eu:33445:B3E5FA80DC8EBD1149AD2AB35ED8B85BD546DEDE261CA593234C619249419506`
 - Package name: `org.meshly.app`

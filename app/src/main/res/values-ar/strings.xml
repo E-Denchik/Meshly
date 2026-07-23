@@ -10,8 +10,8 @@
     <string name="notification_channel_message_desc">إشعارات الرسائل المباشرة الجديدة</string>
 
     <!-- Foreground service / notification content -->
-    <string name="notification_daemon_title">نواة Meshly للاتصال اللامركزي</string>
-    <string name="notification_daemon_text">متصل بشبكة OpenDHT اللامركزية</string>
+    <string name="notification_daemon_title">نواة Meshly لشبكة Tox</string>
+    <string name="notification_daemon_text">متصل بشبكة Tox اللامركزية</string>
     <string name="notification_incoming_audio_call">مكالمة صوتية واردة</string>
     <string name="notification_incoming_video_call">مكالمة مرئية واردة</string>
     <string name="notification_message_attachment_fallback">تم إرسال مرفق</string>
@@ -36,10 +36,8 @@
     <string name="content_desc_toggle_mute">كتم/إلغاء كتم الميكروفون</string>
     <string name="content_desc_toggle_camera">تشغيل/إيقاف الكاميرا</string>
     <string name="content_desc_flip_camera">تبديل الكاميرا</string>
-    <string name="content_desc_toggle_screen_share">تشغيل/إيقاف مشاركة الشاشة</string>
     <string name="content_desc_hang_up">إنهاء المكالمة</string>
-    <string name="video_preview_placeholder">سطح معاينة الفيديو (المرحلة 2: مخرج فيديو libjami)</string>
-    <string name="screen_share_placeholder">جارٍ مشاركة الشاشة (المرحلة 2: MediaProjection ومخرج فيديو libjami)</string>
+    <string name="video_preview_placeholder">سطح معاينة الفيديو (المرحلة 2: مخرج فيديو ToxAV)</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">المحادثات</string>
@@ -57,15 +55,19 @@
     <string name="calls_empty">أضف جهة اتصال مؤكدة لإجراء مكالمة.</string>
     <string name="ongoing_audio_call_with">مكالمة صوتية جارية مع %1$s</string>
     <string name="ongoing_video_call_with">مكالمة مرئية جارية مع %1$s</string>
+    <string name="content_desc_back">رجوع</string>
     <string name="content_desc_audio_call">مكالمة صوتية</string>
     <string name="content_desc_video_call">مكالمة مرئية</string>
+    <string name="call_target_offline_hint">جهة الاتصال هذه غير متصلة ولا يمكن الاتصال بها الآن</string>
 
     <!-- Contacts screen -->
     <string name="contacts_title">جهات الاتصال</string>
-    <string name="contact_search_label">معرّف Jami أو اسم المستخدم</string>
-    <string name="contact_search_error_invalid">أدخل معرّف Jami كاملاً (jami: يليه 40 حرفًا سداسيًا عشريًا) أو اسم مستخدم صالحًا</string>
+    <string name="contact_search_label">معرّف Tox</string>
+    <string name="contact_search_error_invalid">أدخل معرّف Tox صالحًا (76 حرفًا سداسي عشري)</string>
     <string name="contact_search_error_duplicate">موجود بالفعل ضمن جهات الاتصال أو لديه طلب معلّق</string>
     <string name="content_desc_add_contact">إضافة جهة اتصال</string>
+    <string name="content_desc_scan_qr">مسح رمز QR</string>
+    <string name="contact_request_message_label">رسالة (اختياري)</string>
     <string name="tab_contacts_count">جهات الاتصال (%1$d)</string>
     <string name="tab_requests_count">الطلبات (%1$d)</string>
     <string name="tab_blocked_count">المحظورون (%1$d)</string>
@@ -89,16 +91,19 @@
     <string name="message_status_delivered">تم التسليم</string>
     <string name="message_status_read">تمت القراءة</string>
     <string name="message_status_failed">فشل الإرسال</string>
+    <string name="chat_peer_offline_banner">جهة الاتصال هذه غير متصلة — يتطلب Tox أن يكون كلاكما متصلاً في الوقت نفسه لتسليم الرسائل.</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">مراسلة ومكالمات مشفّرة تمامًا من نظير إلى نظير بلا خادم، مدعومة بواسطة GNU Jami.</string>
-    <string name="action_create_new_id">إنشاء معرّف Jami جديد</string>
+    <string name="onboarding_tagline">مراسلة ومكالمات مشفّرة تمامًا من نظير إلى نظير بلا خادم، مدعومة بواسطة Tox.</string>
+    <string name="action_create_new_id">إنشاء معرّف Tox جديد</string>
     <string name="action_import_existing">استيراد حساب موجود</string>
-    <string name="choose_username_title">اختر اسم مستخدم (اختياري)</string>
-    <string name="choose_username_desc">سيتم إنشاء زوج مفاتيح معرّف Jami الخاص بك على الجهاز. يتيح لك تسجيل اسم مستخدم أن يجدك الآخرون بالاسم بدلاً من المعرّف الخام.</string>
-    <string name="label_username">اسم المستخدم</string>
-    <string name="action_generate_id">إنشاء معرّف Jami</string>
+    <string name="choose_nickname_title">حدد اسمًا مستعارًا محليًا (اختياري)</string>
+    <string name="choose_nickname_desc">سيتم إنشاء زوج مفاتيح معرّف Tox الخاص بك على الجهاز. يمكنك اختياريًا تحديد اسم مستعار محلي — لا يُسجَّل ولا يمكن البحث عنه أبدًا، ولا يظهر إلا للأشخاص الذين أضفتهم بالفعل.</string>
+    <string name="label_nickname">الاسم المستعار</string>
+    <string name="action_generate_id">إنشاء معرّف Tox</string>
     <string name="action_back">رجوع</string>
+    <string name="action_continue">متابعة</string>
+    <string name="own_tox_id_qr_title">معرّف Tox الخاص بي</string>
     <string name="import_account_title">استيراد أرشيف الحساب</string>
     <string name="import_account_desc">الصق النسخة الاحتياطية للحساب المحمية بكلمة مرور والتي تم إنشاؤها على جهاز آخر (من الإعدادات هناك، اختر تصدير الحساب)، ثم أدخل كلمة المرور الخاصة بها.</string>
     <string name="label_backup_archive">أرشيف النسخة الاحتياطية</string>
@@ -108,7 +113,7 @@
 
     <!-- Export account dialog -->
     <string name="export_account_title">تصدير الحساب</string>
-    <string name="export_account_warning">احمِ النسخة الاحتياطية لمفاتيحك بكلمة مرور. يمكن لأي شخص يملك هذا الأرشيف وكلمة المرور انتحال هوية معرّف Jami الخاص بك.</string>
+    <string name="export_account_warning">احمِ النسخة الاحتياطية لمفاتيحك بكلمة مرور. يمكن لأي شخص يملك هذا الأرشيف وكلمة المرور انتحال هوية معرّف Tox الخاص بك.</string>
     <string name="label_confirm_password">تأكيد كلمة المرور</string>
     <string name="export_ready_hint">الأرشيف جاهز. انسخه مع كلمة المرور لاستعادة الحساب على جهاز آخر:</string>
     <string name="action_export">تصدير</string>
@@ -117,18 +122,16 @@
     <!-- Settings screen -->
     <string name="settings_title">الإعدادات</string>
     <string name="section_account">الحساب</string>
-    <string name="label_no_username">لم يتم تسجيل اسم مستخدم</string>
+    <string name="label_no_nickname">لم يتم تحديد اسم مستعار</string>
+    <string name="content_desc_show_qr">إظهار معرّف Tox الخاص بي كرمز QR</string>
     <string name="export_account_item_title">تصدير الحساب</string>
-    <string name="export_account_item_desc">نسخة احتياطية محمية بكلمة مرور لمفاتيح معرّف Jami الخاص بك</string>
+    <string name="export_account_item_desc">نسخة احتياطية محمية بكلمة مرور لمفاتيح معرّف Tox الخاص بك</string>
     <string name="section_network">الشبكة</string>
-    <string name="upnp_title">UPnP</string>
-    <string name="upnp_desc">توجيه منافذ الراوتر تلقائيًا للاتصالات المباشرة من نظير إلى نظير</string>
-    <string name="turn_title">مُرحّل TURN</string>
-    <string name="turn_desc">مُرحّل احتياطي عند تعذّر الاتصال المباشر من نظير إلى نظير</string>
-    <string name="bootstrap_nodes_title">عُقد بدء تشغيل DHT</string>
-    <string name="bootstrap_nodes_desc">نقاط الدخول إلى شبكة OpenDHT. احتفظ بعُقدتين مستقلتين على الأقل حتى يستمر التطبيق بالعمل في حال تعطّل إحداهما.</string>
+    <string name="bootstrap_nodes_title">عُقد بدء التشغيل</string>
+    <string name="bootstrap_nodes_desc">نقاط الدخول إلى شبكة Tox. احتفظ بعُقدتين مستقلتين على الأقل حتى يستمر التطبيق بالعمل في حال تعطّل إحداهما.</string>
     <string name="content_desc_remove_node">إزالة العقدة</string>
-    <string name="label_host_port">المضيف:المنفذ</string>
+    <string name="label_host_port_pubkey">المضيف:المنفذ:المفتاح العام</string>
+    <string name="bootstrap_node_invalid_format">أدخل عقدة بدء التشغيل بصيغة المضيف:المنفذ:المفتاح-العام</string>
     <string name="content_desc_add_node">إضافة عقدة</string>
     <string name="section_diagnostics">التشخيص</string>
     <string name="export_logs_title">تصدير سجلات التشخيص</string>

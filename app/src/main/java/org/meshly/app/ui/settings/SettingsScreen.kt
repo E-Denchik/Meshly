@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -47,10 +48,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +68,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import org.meshly.app.R
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.QrCodeImage
 import org.meshly.app.ui.onboarding.ExportAccountDialog
 import org.meshly.app.ui.viewmodel.SettingsViewModel
 
@@ -76,18 +79,19 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel()
 ) {
     val account by viewModel.account.collectAsStateWithLifecycle()
-    val upnpEnabled by viewModel.upnpEnabled.collectAsStateWithLifecycle()
-    val turnEnabled by viewModel.turnEnabled.collectAsStateWithLifecycle()
 
     var showExportDialog by remember { mutableStateOf(false) }
     var showLogoutConfirm by remember { mutableStateOf(false) }
+    var showOwnIdQr by remember { mutableStateOf(false) }
     var newBootstrapNode by remember { mutableStateOf("") }
+    var bootstrapNodeError by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
     val exportLogsFailedMessage = stringResource(R.string.export_logs_failed)
     val shareLogsChooserTitle = stringResource(R.string.share_logs_chooser_title)
+    val bootstrapNodeInvalidFormat = stringResource(R.string.bootstrap_node_invalid_format)
 
     Scaffold(
         modifier = modifier,
@@ -104,12 +108,20 @@ fun SettingsScreen(
             ListItem(
                 leadingContent = {
                     Avatar(
-                        name = account?.username ?: account?.jamiId.orEmpty(),
-                        seed = account?.jamiId.orEmpty()
+                        name = account?.nickname ?: account?.toxId.orEmpty(),
+                        seed = account?.toxId.orEmpty()
                     )
                 },
-                headlineContent = { Text(account?.username ?: stringResource(R.string.label_no_username)) },
-                supportingContent = { Text(account?.jamiId ?: "") }
+                headlineContent = { Text(account?.nickname ?: stringResource(R.string.label_no_nickname)) },
+                supportingContent = { Text(account?.toxId ?: "") }
+            )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.own_tox_id_qr_title)) },
+                trailingContent = {
+                    IconButton(onClick = { showOwnIdQr = true }) {
+                        Icon(Icons.Filled.QrCode, contentDescription = stringResource(R.string.content_desc_show_qr))
+                    }
+                }
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.export_account_item_title)) },
@@ -137,20 +149,6 @@ fun SettingsScreen(
 
             ListItem(headlineContent = { Text(stringResource(R.string.section_network), style = MaterialTheme.typography.titleMedium) })
             ListItem(
-                headlineContent = { Text(stringResource(R.string.upnp_title)) },
-                supportingContent = { Text(stringResource(R.string.upnp_desc)) },
-                trailingContent = {
-                    Switch(checked = upnpEnabled, onCheckedChange = { viewModel.setUpnpEnabled(it) })
-                }
-            )
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.turn_title)) },
-                supportingContent = { Text(stringResource(R.string.turn_desc)) },
-                trailingContent = {
-                    Switch(checked = turnEnabled, onCheckedChange = { viewModel.setTurnEnabled(it) })
-                }
-            )
-            ListItem(
                 headlineContent = { Text(stringResource(R.string.bootstrap_nodes_title)) },
                 supportingContent = { Text(stringResource(R.string.bootstrap_nodes_desc)) }
             )
@@ -168,27 +166,37 @@ fun SettingsScreen(
                     }
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                OutlinedTextField(
-                    value = newBootstrapNode,
-                    onValueChange = { newBootstrapNode = it },
-                    label = { Text(stringResource(R.string.label_host_port)) },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(
-                    onClick = {
-                        if (newBootstrapNode.isNotBlank()) {
-                            viewModel.addBootstrapNode(newBootstrapNode)
-                            newBootstrapNode = ""
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = newBootstrapNode,
+                        onValueChange = { newBootstrapNode = it; bootstrapNodeError = null },
+                        label = { Text(stringResource(R.string.label_host_port_pubkey)) },
+                        isError = bootstrapNodeError != null,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            autoCorrectEnabled = false,
+                            capitalization = KeyboardCapitalization.None
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            val parts = newBootstrapNode.trim().split(":")
+                            if (parts.size == 3 && parts.all { it.isNotBlank() }) {
+                                viewModel.addBootstrapNode(newBootstrapNode.trim())
+                                newBootstrapNode = ""
+                                bootstrapNodeError = null
+                            } else {
+                                bootstrapNodeError = bootstrapNodeInvalidFormat
+                            }
                         }
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.content_desc_add_node))
                     }
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.content_desc_add_node))
+                }
+                bootstrapNodeError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -254,6 +262,28 @@ fun SettingsScreen(
         ExportAccountDialog(
             onDismiss = { showExportDialog = false },
             onExport = { password -> viewModel.exportAccount(password) }
+        )
+    }
+
+    if (showOwnIdQr) {
+        AlertDialog(
+            onDismissRequest = { showOwnIdQr = false },
+            title = { Text(stringResource(R.string.own_tox_id_qr_title)) },
+            text = {
+                Column {
+                    account?.toxId?.let { toxId -> QrCodeImage(content = toxId) }
+                    Text(
+                        account?.toxId.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showOwnIdQr = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
         )
     }
 

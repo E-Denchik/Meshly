@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +52,7 @@ import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
+import org.meshly.app.data.model.PresenceStatus
 import org.meshly.app.ui.components.Avatar
 import org.meshly.app.ui.components.EmptyState
 import org.meshly.app.ui.viewmodel.CallViewModel
@@ -59,7 +61,7 @@ import org.meshly.app.ui.viewmodel.ContactViewModel
 @Composable
 fun CallsScreen(
     modifier: Modifier = Modifier,
-    onDial: (jamiId: String, displayName: String, callType: CallType) -> Unit,
+    onDial: (toxId: String, displayName: String, callType: CallType) -> Unit,
     contactViewModel: ContactViewModel = viewModel(),
     callViewModel: CallViewModel = viewModel()
 ) {
@@ -104,7 +106,7 @@ fun CallsScreen(
                 EmptyState(icon = Icons.Filled.Call, text = stringResource(R.string.calls_empty))
             } else {
                 LazyColumn {
-                    items(callableContacts, key = { it.jamiId }) { contact ->
+                    items(callableContacts, key = { it.toxId }) { contact ->
                         DialRow(contact, onDial)
                     }
                 }
@@ -116,30 +118,32 @@ fun CallsScreen(
 @Composable
 private fun DialRow(
     contact: Contact,
-    onDial: (jamiId: String, displayName: String, callType: CallType) -> Unit
+    onDial: (toxId: String, displayName: String, callType: CallType) -> Unit
 ) {
+    val isOnline = contact.presence == PresenceStatus.ONLINE
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-            Avatar(name = contact.displayName, seed = contact.jamiId, size = 40.dp)
+            Avatar(name = contact.displayName, seed = contact.toxId, size = 40.dp)
             Column(modifier = Modifier.padding(start = 12.dp)) {
                 Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    contact.jamiId,
+                    if (isOnline) contact.toxId else stringResource(R.string.call_target_offline_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
         Row {
-            IconButton(onClick = { onDial(contact.jamiId, contact.displayName, CallType.AUDIO) }) {
+            IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.AUDIO) }, enabled = isOnline) {
                 Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
             }
-            IconButton(onClick = { onDial(contact.jamiId, contact.displayName, CallType.VIDEO) }) {
+            IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.VIDEO) }, enabled = isOnline) {
                 Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
             }
         }

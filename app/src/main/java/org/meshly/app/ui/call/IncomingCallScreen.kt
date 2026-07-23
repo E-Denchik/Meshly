@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ import org.meshly.app.ui.components.Avatar
 
 @Composable
 fun IncomingCallScreen(
-    peerJamiId: String,
+    peerToxId: String,
     peerDisplayName: String,
     callType: CallType,
     onAccept: () -> Unit,
@@ -73,7 +73,7 @@ fun IncomingCallScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Avatar(name = peerDisplayName, seed = peerJamiId, size = 128.dp)
+                    Avatar(name = peerDisplayName, seed = peerToxId, size = 128.dp)
                     Spacer(Modifier.height(24.dp))
                     Text(
                         peerDisplayName,

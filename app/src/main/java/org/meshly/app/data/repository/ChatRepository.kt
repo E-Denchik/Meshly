@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,22 +27,25 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import org.meshly.app.core.JamiBridge
-import org.meshly.app.core.JamiEvent
+import org.meshly.app.core.ToxBridge
+import org.meshly.app.core.ToxEvent
 import org.meshly.app.data.local.ChatMessageDao
 import org.meshly.app.data.local.ChatMessageEntity
+import org.meshly.app.data.local.ContactDao
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
+import org.meshly.app.data.model.PresenceStatus
 import java.util.UUID
 
 class ChatRepository(
     private val chatMessageDao: ChatMessageDao,
-    private val jamiBridge: JamiBridge = JamiBridge.getInstance()
+    private val contactDao: ContactDao,
+    private val toxBridge: ToxBridge = ToxBridge.getInstance()
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        jamiBridge.events
+        toxBridge.events
             .onEach { event -> handleEvent(event) }
             .launchIn(repositoryScope)
     }
@@ -53,30 +56,42 @@ class ChatRepository(
         }
     }
 
-    private suspend fun handleEvent(event: JamiEvent) {
+    private suspend fun handleEvent(event: ToxEvent) {
         when (event) {
-            is JamiEvent.MessageReceived -> receiveMessage(event.message)
-            is JamiEvent.MessageStateChanged -> {
+            is ToxEvent.MessageReceived -> receiveMessage(event.message)
+            is ToxEvent.MessageStateChanged -> {
                 chatMessageDao.updateMessageStatus(event.messageId, event.status.name)
             }
             else -> Unit
         }
     }
 
+    /**
+     * Sends a text message. Plain Tox has no offline/store-and-forward delivery, so unlike
+     * Jami's DHT-queued sends, this checks the peer's currently known presence first: if they're
+     * not ONLINE right now, the message is marked FAILED immediately instead of optimistically
+     * going through a SENDING -> SENT hand-off that could never actually be delivered.
+     */
     suspend fun sendMessage(conversationId: String, text: String, attachmentPath: String? = null): ChatMessage {
         val pendingId = UUID.randomUUID().toString()
+        val peerOnline = contactDao.getContactById(conversationId)?.presence == PresenceStatus.ONLINE.name
+
         val pendingMessage = ChatMessage(
             id = pendingId,
             conversationId = conversationId,
-            senderJamiId = "local_me",
+            senderToxId = "local_me",
             text = text,
-            status = MessageStatus.SENDING,
+            status = if (peerOnline) MessageStatus.SENDING else MessageStatus.FAILED,
             attachmentPath = attachmentPath,
             isIncoming = false
         )
         chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(pendingMessage))
 
-        jamiBridge.sendTextMessage(pendingId, conversationId, text, attachmentPath)
+        if (!peerOnline) {
+            return pendingMessage
+        }
+
+        toxBridge.sendTextMessage(pendingId, conversationId, text, attachmentPath)
         chatMessageDao.updateMessageStatus(pendingId, MessageStatus.SENT.name)
         return pendingMessage.copy(status = MessageStatus.SENT)
     }

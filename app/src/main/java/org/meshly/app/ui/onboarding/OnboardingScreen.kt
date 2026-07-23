@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Button
@@ -54,11 +55,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.meshly.app.R
+import org.meshly.app.ui.components.QrCodeImage
 import org.meshly.app.ui.theme.MeshWordmarkStyle
 import org.meshly.app.ui.viewmodel.OnboardingViewModel
 
 private enum class OnboardingStep {
-    CHECKING, WELCOME, CREATE_ACCOUNT, IMPORT_ACCOUNT
+    CHECKING, WELCOME, CREATE_ACCOUNT, SHOW_OWN_ID, IMPORT_ACCOUNT
 }
 
 @Composable
@@ -99,11 +101,15 @@ fun OnboardingScreen(
                     onImportAccount = { step = OnboardingStep.IMPORT_ACCOUNT }
                 )
                 OnboardingStep.CREATE_ACCOUNT -> CreateAccountStep(
-                    onCreate = { username ->
-                        viewModel.createAccount(username.ifBlank { null })
-                        onOnboardingComplete()
+                    onCreate = { nickname ->
+                        viewModel.createAccount(nickname.ifBlank { null })
+                        step = OnboardingStep.SHOW_OWN_ID
                     },
                     onBack = { step = OnboardingStep.WELCOME }
+                )
+                OnboardingStep.SHOW_OWN_ID -> OwnIdStep(
+                    toxId = account?.toxId.orEmpty(),
+                    onContinue = onOnboardingComplete
                 )
                 OnboardingStep.IMPORT_ACCOUNT -> ImportAccountStep(
                     onImport = { payload, password ->
@@ -156,27 +162,46 @@ private fun WelcomeStep(onCreateAccount: () -> Unit, onImportAccount: () -> Unit
 
 @Composable
 private fun CreateAccountStep(onCreate: (String) -> Unit, onBack: () -> Unit) {
-    var username by remember { mutableStateOf("") }
-    Text(stringResource(R.string.choose_username_title), style = MaterialTheme.typography.titleMedium)
+    var nickname by remember { mutableStateOf("") }
+    Text(stringResource(R.string.choose_nickname_title), style = MaterialTheme.typography.titleMedium)
     Text(
-        stringResource(R.string.choose_username_desc),
+        stringResource(R.string.choose_nickname_desc),
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(vertical = 12.dp)
     )
     OutlinedTextField(
-        value = username,
-        onValueChange = { username = it },
-        label = { Text(stringResource(R.string.label_username)) },
+        value = nickname,
+        onValueChange = { nickname = it },
+        label = { Text(stringResource(R.string.label_nickname)) },
         modifier = Modifier.fillMaxWidth()
     )
     Button(
-        onClick = { onCreate(username) },
+        onClick = { onCreate(nickname) },
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
     ) {
         Text(stringResource(R.string.action_generate_id))
     }
     TextButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) {
         Text(stringResource(R.string.action_back))
+    }
+}
+
+@Composable
+private fun OwnIdStep(toxId: String, onContinue: () -> Unit) {
+    Text(stringResource(R.string.own_tox_id_qr_title), style = MaterialTheme.typography.titleMedium)
+    if (toxId.isNotBlank()) {
+        QrCodeImage(content = toxId, modifier = Modifier.padding(vertical = 16.dp))
+    }
+    SelectionContainer {
+        Text(
+            toxId,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+    }
+    Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.action_continue))
     }
 }
 

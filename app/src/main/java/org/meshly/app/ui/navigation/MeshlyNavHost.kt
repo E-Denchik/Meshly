@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,8 +46,8 @@ fun MeshlyNavHost(
     val navController = rememberNavController()
 
     LaunchedEffect(pendingChatDeepLink) {
-        pendingChatDeepLink?.let { (jamiId, displayName) ->
-            navController.navigate(Routes.chat(jamiId, displayName))
+        pendingChatDeepLink?.let { (toxId, displayName) ->
+            navController.navigate(Routes.chat(toxId, displayName))
             onDeepLinkConsumed()
         }
     }
@@ -70,18 +70,18 @@ fun MeshlyNavHost(
         composable(
             route = Routes.CHAT,
             arguments = listOf(
-                navArgument("jamiId") { type = NavType.StringType },
+                navArgument("toxId") { type = NavType.StringType },
                 navArgument("displayName") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val jamiId = Routes.decode(backStackEntry.arguments?.getString("jamiId").orEmpty())
+            val toxId = Routes.decode(backStackEntry.arguments?.getString("toxId").orEmpty())
             val displayName = Routes.decode(backStackEntry.arguments?.getString("displayName").orEmpty())
             ChatScreen(
-                peerJamiId = jamiId,
+                peerToxId = toxId,
                 peerDisplayName = displayName,
                 onBack = { navController.popBackStack() },
                 onStartCall = { type ->
-                    navController.navigate(Routes.call(jamiId, displayName, type.name, outgoing = true))
+                    navController.navigate(Routes.call(toxId, displayName, type.name, outgoing = true))
                 }
             )
         }
@@ -89,19 +89,19 @@ fun MeshlyNavHost(
         composable(
             route = Routes.CALL,
             arguments = listOf(
-                navArgument("jamiId") { type = NavType.StringType },
+                navArgument("toxId") { type = NavType.StringType },
                 navArgument("displayName") { type = NavType.StringType },
                 navArgument("callType") { type = NavType.StringType },
                 navArgument("outgoing") { type = NavType.BoolType }
             )
         ) { backStackEntry ->
             val args = backStackEntry.arguments
-            val jamiId = Routes.decode(args?.getString("jamiId").orEmpty())
+            val toxId = Routes.decode(args?.getString("toxId").orEmpty())
             val displayName = Routes.decode(args?.getString("displayName").orEmpty())
             val callType = CallType.valueOf(args?.getString("callType") ?: CallType.AUDIO.name)
             val outgoing = args?.getBoolean("outgoing") ?: true
             CallScreen(
-                peerJamiId = jamiId,
+                peerToxId = toxId,
                 peerDisplayName = displayName,
                 callType = callType,
                 isOutgoing = outgoing,

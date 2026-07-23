@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
-import org.meshly.app.service.JamiDaemonService
+import org.meshly.app.service.ToxDaemonService
 import org.meshly.app.ui.navigation.MeshlyNavHost
 import org.meshly.app.ui.theme.MeshlyTheme
 
@@ -68,13 +68,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun extractDeepLink(intent: Intent?): Pair<String, String>? {
-        val jamiId = intent?.getStringExtra(EXTRA_DEEPLINK_JAMI_ID) ?: return null
-        val displayName = intent.getStringExtra(EXTRA_DEEPLINK_DISPLAY_NAME) ?: jamiId
-        return jamiId to displayName
+        val toxId = intent?.getStringExtra(EXTRA_DEEPLINK_TOX_ID) ?: return null
+        val displayName = intent.getStringExtra(EXTRA_DEEPLINK_DISPLAY_NAME) ?: toxId
+        return toxId to displayName
     }
 
     private fun startDaemonService() {
-        val intent = Intent(this, JamiDaemonService::class.java)
+        val intent = Intent(this, ToxDaemonService::class.java)
         ContextCompat.startForegroundService(this, intent)
     }
 
@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        const val EXTRA_DEEPLINK_JAMI_ID = "deep_link_jami_id"
+        const val EXTRA_DEEPLINK_TOX_ID = "deep_link_tox_id"
         const val EXTRA_DEEPLINK_DISPLAY_NAME = "deep_link_display_name"
     }
 }

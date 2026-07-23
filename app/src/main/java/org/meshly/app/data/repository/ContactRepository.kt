@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import org.meshly.app.core.JamiBridge
-import org.meshly.app.core.JamiEvent
+import org.meshly.app.core.ToxBridge
+import org.meshly.app.core.ToxEvent
 import org.meshly.app.data.local.ContactDao
 import org.meshly.app.data.local.ContactEntity
 import org.meshly.app.data.model.Contact
@@ -37,12 +37,12 @@ import org.meshly.app.data.model.PresenceStatus
 
 class ContactRepository(
     private val contactDao: ContactDao,
-    private val jamiBridge: JamiBridge = JamiBridge.getInstance()
+    private val toxBridge: ToxBridge = ToxBridge.getInstance()
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        jamiBridge.events
+        toxBridge.events
             .onEach { event -> handleEvent(event) }
             .launchIn(repositoryScope)
     }
@@ -51,52 +51,54 @@ class ContactRepository(
         entities.map { it.toDomain() }
     }
 
-    private suspend fun handleEvent(event: JamiEvent) {
+    private suspend fun handleEvent(event: ToxEvent) {
         when (event) {
-            is JamiEvent.ContactRequestReceived -> {
+            is ToxEvent.ContactRequestReceived -> {
                 contactDao.insertOrUpdateContact(ContactEntity.fromDomain(event.contact))
             }
-            is JamiEvent.ContactStatusChanged -> {
-                contactDao.updateStatus(event.jamiId, event.status.name)
+            is ToxEvent.ContactStatusChanged -> {
+                contactDao.updateStatus(event.toxId, event.status.name)
             }
-            is JamiEvent.PresenceChanged -> {
-                contactDao.updatePresence(event.jamiId, event.presence.name)
+            is ToxEvent.PresenceChanged -> {
+                contactDao.updatePresence(event.toxId, event.presence.name)
             }
             else -> Unit
         }
     }
 
-    suspend fun addContactRequest(jamiId: String, displayName: String) {
+    /** Adds a contact purely by their exact Tox ID (FR-2.1) - there is no username/name-service
+     *  search in plain Tox, so [toxId] must be the peer's full ID pasted or scanned elsewhere. */
+    suspend fun addContactRequest(toxId: String, displayName: String, requestMessage: String? = null) {
         val contact = Contact(
-            jamiId = jamiId,
+            toxId = toxId,
             displayName = displayName,
             status = ContactStatus.PENDING_OUTGOING
         )
         contactDao.insertOrUpdateContact(ContactEntity.fromDomain(contact))
-        jamiBridge.addContactRequest(jamiId, displayName)
+        toxBridge.addContactRequest(toxId, displayName, requestMessage)
     }
 
     suspend fun acceptContactRequest(contact: Contact) {
         val updated = contact.copy(status = ContactStatus.CONFIRMED, presence = PresenceStatus.ONLINE)
         contactDao.insertOrUpdateContact(ContactEntity.fromDomain(updated))
-        jamiBridge.confirmContact(contact.jamiId, contact.displayName)
+        toxBridge.confirmContact(contact.toxId, contact.displayName)
     }
 
-    suspend fun removeContact(jamiId: String) {
-        contactDao.deleteContact(jamiId)
-        jamiBridge.forgetPeer(jamiId)
+    suspend fun removeContact(toxId: String) {
+        contactDao.deleteContact(toxId)
+        toxBridge.forgetPeer(toxId)
     }
 
     /** Blocks a contact (FR-2.5): keeps the local record so it can be unblocked later, but stops
      *  presence/message simulation for that peer and hides it from the confirmed/requests lists. */
-    suspend fun blockContact(jamiId: String) {
-        contactDao.updateStatus(jamiId, ContactStatus.BLOCKED.name)
-        jamiBridge.forgetPeer(jamiId)
+    suspend fun blockContact(toxId: String) {
+        contactDao.updateStatus(toxId, ContactStatus.BLOCKED.name)
+        toxBridge.forgetPeer(toxId)
     }
 
     suspend fun unblockContact(contact: Contact) {
-        contactDao.updateStatus(contact.jamiId, ContactStatus.CONFIRMED.name)
-        jamiBridge.confirmContact(contact.jamiId, contact.displayName)
+        contactDao.updateStatus(contact.toxId, ContactStatus.CONFIRMED.name)
+        toxBridge.confirmContact(contact.toxId, contact.displayName)
     }
 
     /** Seeds one simulated incoming friend request for fresh installs, so the Requests tab isn't
@@ -104,15 +106,15 @@ class ContactRepository(
     suspend fun seedDemoIncomingRequestIfEmpty() {
         if (contactDao.countContacts() == 0) {
             val demo = DEMO_CONTACTS.random()
-            jamiBridge.simulateIncomingContactRequest(demo.first, demo.second)
+            toxBridge.simulateIncomingContactRequest(demo.first, demo.second)
         }
     }
 
     companion object {
         private val DEMO_CONTACTS = listOf(
-            "jami:" + "a".repeat(40) to "Nadia Petrova",
-            "jami:" + "b".repeat(40) to "Igor Volkov",
-            "jami:" + "c".repeat(40) to "Sara Lindqvist"
+            "a".repeat(76) to "Nadia Petrova",
+            "b".repeat(76) to "Igor Volkov",
+            "c".repeat(76) to "Sara Lindqvist"
         )
     }
 }

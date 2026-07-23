@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 package org.meshly.app.ui.contacts
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.DropdownMenu
@@ -48,8 +50,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -62,39 +64,49 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
+import org.meshly.app.data.model.PresenceStatus
 import org.meshly.app.ui.components.Avatar
 import org.meshly.app.ui.components.EmptyState
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
-/** FR-2.1: a full Jami ID is "jami:" + a 40-char hex public key hash; a registered username
- *  follows the Jami name-service's own charset/length rules (letters, digits, `_.-`, 3-32 chars). */
-private val JAMI_ID_REGEX = Regex("^jami:[0-9a-fA-F]{40}$")
-private val USERNAME_REGEX = Regex("^[a-zA-Z0-9_.-]{3,32}$")
+/** A Tox ID is a 76-char hex string (32-byte public key + 4-byte nospam + 2-byte checksum);
+ *  unlike Jami there is no name-service search, so this is the only accepted add-contact format. */
+private val TOX_ID_REGEX = Regex("^[0-9a-fA-F]{76}$")
 
-private fun isValidJamiIdOrUsername(query: String): Boolean =
-    JAMI_ID_REGEX.matches(query) || USERNAME_REGEX.matches(query)
+private fun isValidToxId(query: String): Boolean = TOX_ID_REGEX.matches(query)
 
 @Composable
 fun ContactListScreen(
     modifier: Modifier = Modifier,
-    onOpenChat: (jamiId: String, displayName: String) -> Unit = { _, _ -> },
-    onCall: (jamiId: String, displayName: String, callType: CallType) -> Unit = { _, _, _ -> },
+    onOpenChat: (toxId: String, displayName: String) -> Unit = { _, _ -> },
+    onCall: (toxId: String, displayName: String, callType: CallType) -> Unit = { _, _, _ -> },
     viewModel: ContactViewModel = viewModel()
 ) {
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
+    var requestMessage by remember { mutableStateOf("") }
     var searchError by remember { mutableStateOf<String?>(null) }
 
     val errorInvalidFormat = stringResource(R.string.contact_search_error_invalid)
     val errorDuplicate = stringResource(R.string.contact_search_error_duplicate)
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { scanned ->
+            searchQuery = scanned.trim()
+            searchError = null
+        }
+    }
 
     val confirmed = contacts.filter { it.status == ContactStatus.CONFIRMED }
     val requests = contacts.filter {
@@ -120,14 +132,27 @@ fun ContactListScreen(
                     )
                     IconButton(
                         onClick = {
+                            scanLauncher.launch(
+                                ScanOptions()
+                                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                    .setBeepEnabled(false)
+                                    .setOrientationLocked(false)
+                            )
+                        }
+                    ) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = stringResource(R.string.content_desc_scan_qr))
+                    }
+                    IconButton(
+                        onClick = {
                             val trimmed = searchQuery.trim()
                             searchError = when {
                                 trimmed.isBlank() -> null
-                                !isValidJamiIdOrUsername(trimmed) -> errorInvalidFormat
-                                contacts.any { it.jamiId == trimmed } -> errorDuplicate
+                                !isValidToxId(trimmed) -> errorInvalidFormat
+                                contacts.any { it.toxId == trimmed } -> errorDuplicate
                                 else -> {
-                                    viewModel.addContactRequest(trimmed, trimmed)
+                                    viewModel.addContactRequest(trimmed, trimmed, requestMessage.ifBlank { null })
                                     searchQuery = ""
+                                    requestMessage = ""
                                     null
                                 }
                             }
@@ -139,23 +164,30 @@ fun ContactListScreen(
                 searchError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
+                OutlinedTextField(
+                    value = requestMessage,
+                    onValueChange = { requestMessage = it },
+                    label = { Text(stringResource(R.string.contact_request_message_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                )
             }
 
-            TabRow(selectedTabIndex = selectedTab) {
+            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
                 Tab(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text(stringResource(R.string.tab_contacts_count, confirmed.size)) }
+                    onClick = { selectedTab = 0; searchError = null },
+                    text = { Text(stringResource(R.string.tab_contacts_count, confirmed.size), maxLines = 1, softWrap = false) }
                 )
                 Tab(
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text(stringResource(R.string.tab_requests_count, requests.size)) }
+                    onClick = { selectedTab = 1; searchError = null },
+                    text = { Text(stringResource(R.string.tab_requests_count, requests.size), maxLines = 1, softWrap = false) }
                 )
                 Tab(
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text(stringResource(R.string.tab_blocked_count, blocked.size)) }
+                    onClick = { selectedTab = 2; searchError = null },
+                    text = { Text(stringResource(R.string.tab_blocked_count, blocked.size), maxLines = 1, softWrap = false) }
                 )
             }
 
@@ -179,15 +211,15 @@ fun ContactListScreen(
                 )
             } else {
                 LazyColumn {
-                    items(visibleList, key = { it.jamiId }) { contact ->
+                    items(visibleList, key = { it.toxId }) { contact ->
                         ContactRow(
                             contact = contact,
                             onAccept = { viewModel.acceptRequest(contact) },
-                            onRemove = { viewModel.removeContact(contact.jamiId) },
-                            onBlock = { viewModel.blockContact(contact.jamiId) },
+                            onRemove = { viewModel.removeContact(contact.toxId) },
+                            onBlock = { viewModel.blockContact(contact.toxId) },
                             onUnblock = { viewModel.unblockContact(contact) },
-                            onOpenChat = { onOpenChat(contact.jamiId, contact.displayName) },
-                            onCall = { callType -> onCall(contact.jamiId, contact.displayName, callType) }
+                            onOpenChat = { onOpenChat(contact.toxId, contact.displayName) },
+                            onCall = { callType -> onCall(contact.toxId, contact.displayName, callType) }
                         )
                     }
                 }
@@ -217,14 +249,15 @@ private fun ContactRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-            Avatar(name = contact.displayName, seed = contact.jamiId, size = 40.dp)
+            Avatar(name = contact.displayName, seed = contact.toxId, size = 40.dp)
             Column(modifier = Modifier.padding(start = 12.dp)) {
                 Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    contact.jamiId,
+                    contact.toxId,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -238,10 +271,11 @@ private fun ContactRow(
                 }
             }
             ContactStatus.CONFIRMED -> Row {
-                IconButton(onClick = { onCall(CallType.AUDIO) }) {
+                val isOnline = contact.presence == PresenceStatus.ONLINE
+                IconButton(onClick = { onCall(CallType.AUDIO) }, enabled = isOnline) {
                     Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
                 }
-                IconButton(onClick = { onCall(CallType.VIDEO) }) {
+                IconButton(onClick = { onCall(CallType.VIDEO) }, enabled = isOnline) {
                     Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
                 }
                 Box {

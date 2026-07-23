@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -96,26 +96,26 @@ fun MainScreen(navController: NavHostController) {
         when (selectedTab) {
             MainTab.CHATS -> ChatsListScreen(
                 modifier = contentModifier,
-                onOpenChat = { jamiId, displayName ->
-                    navController.navigate(Routes.chat(jamiId, displayName))
+                onOpenChat = { toxId, displayName ->
+                    navController.navigate(Routes.chat(toxId, displayName))
                 }
             )
             MainTab.CONTACTS -> ContactListScreen(
                 modifier = contentModifier,
-                onOpenChat = { jamiId, displayName ->
-                    navController.navigate(Routes.chat(jamiId, displayName))
+                onOpenChat = { toxId, displayName ->
+                    navController.navigate(Routes.chat(toxId, displayName))
                 },
-                onCall = { jamiId, displayName, callType ->
+                onCall = { toxId, displayName, callType ->
                     navController.navigate(
-                        Routes.call(jamiId, displayName, callType.name, outgoing = true)
+                        Routes.call(toxId, displayName, callType.name, outgoing = true)
                     )
                 }
             )
             MainTab.CALLS -> CallsScreen(
                 modifier = contentModifier,
-                onDial = { jamiId, displayName, callType ->
+                onDial = { toxId, displayName, callType ->
                     navController.navigate(
-                        Routes.call(jamiId, displayName, callType.name, outgoing = true)
+                        Routes.call(toxId, displayName, callType.name, outgoing = true)
                     )
                 }
             )

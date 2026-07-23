@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,7 +55,7 @@ import org.meshly.app.ui.viewmodel.ContactViewModel
 @Composable
 fun ChatsListScreen(
     modifier: Modifier = Modifier,
-    onOpenChat: (jamiId: String, displayName: String) -> Unit,
+    onOpenChat: (toxId: String, displayName: String) -> Unit,
     viewModel: ContactViewModel = viewModel()
 ) {
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
@@ -72,8 +73,8 @@ fun ChatsListScreen(
             )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(conversations, key = { it.jamiId }) { contact ->
-                    ConversationRow(contact) { onOpenChat(contact.jamiId, contact.displayName) }
+                items(conversations, key = { it.toxId }) { contact ->
+                    ConversationRow(contact) { onOpenChat(contact.toxId, contact.displayName) }
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 }
             }
@@ -92,17 +93,18 @@ private fun ConversationRow(contact: Contact, onClick: () -> Unit) {
     ) {
         Avatar(
             name = contact.displayName,
-            seed = contact.jamiId,
+            seed = contact.toxId,
             showOnlineIndicator = contact.presence == PresenceStatus.ONLINE,
             onlineContentDescription = stringResource(R.string.content_desc_online)
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {
             Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
             Text(
-                contact.jamiId,
+                contact.toxId,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

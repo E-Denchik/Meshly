@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,13 +21,11 @@
 package org.meshly.app.data.model
 
 data class Account(
-    val jamiId: String,
-    val username: String? = null,
-    val isRegisteredOnNameServer: Boolean = false,
+    val toxId: String,
+    val nickname: String? = null,
     val bootstrapNodes: List<String> = listOf(
-        "bootstrap.jami.net:4222",
-        "bootstrap.ring.cx:4222"
-    ),
-    val upnpEnabled: Boolean = true,
-    val turnEnabled: Boolean = true
+        "node.tox.biribiri.org:33445:F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67",
+        "tox.abilinski.com:33445:10C00EB250C3233E343E2AEBA07115A5C28920E9C8D29492F6D00B29049EDC7",
+        "tox.plastiras.org:33445:8E8B63299B3D520FB377FE5100E65E3322F7AE5B20A0ACED2981769FC5B43B4"
+    )
 )

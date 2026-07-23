@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,9 +48,9 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun addContactRequest(jamiId: String, displayName: String) {
+    fun addContactRequest(toxId: String, displayName: String, requestMessage: String? = null) {
         viewModelScope.launch {
-            contactRepository.addContactRequest(jamiId, displayName)
+            contactRepository.addContactRequest(toxId, displayName, requestMessage)
         }
     }
 
@@ -60,15 +60,15 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun removeContact(jamiId: String) {
+    fun removeContact(toxId: String) {
         viewModelScope.launch {
-            contactRepository.removeContact(jamiId)
+            contactRepository.removeContact(toxId)
         }
     }
 
-    fun blockContact(jamiId: String) {
+    fun blockContact(toxId: String) {
         viewModelScope.launch {
-            contactRepository.blockContact(jamiId)
+            contactRepository.blockContact(toxId)
         }
     }
 

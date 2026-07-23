@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,13 @@ enum class MessageStatus {
     SENDING,
     SENT,
     DELIVERED,
-    READ,
     FAILED
 }
 
 data class ChatMessage(
     val id: String,
-    val conversationId: String, // Jami ID of peer
-    val senderJamiId: String,
+    val conversationId: String, // Tox ID of peer
+    val senderToxId: String,
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
     val status: MessageStatus = MessageStatus.SENT,

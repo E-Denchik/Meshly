@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,68 +23,65 @@ package org.meshly.app.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.flow.StateFlow
-import org.meshly.app.core.JamiBridge
+import org.meshly.app.core.ToxBridge
 import org.meshly.app.data.model.Account
 
 class AccountRepository(private val context: Context) {
-    private val jamiBridge = JamiBridge.getInstance()
+    private val toxBridge = ToxBridge.getInstance()
     private val prefs: SharedPreferences = context.getSharedPreferences("meshly_account", Context.MODE_PRIVATE)
 
-    val currentAccount: StateFlow<Account?> = jamiBridge.currentAccount
+    val currentAccount: StateFlow<Account?> = toxBridge.currentAccount
 
-    fun hasAccount(): Boolean = prefs.contains("jami_id")
+    fun hasAccount(): Boolean = prefs.contains("tox_id")
 
     fun loadOrInitAccount(): Account {
-        val savedJamiId = prefs.getString("jami_id", null)
-        val savedUsername = prefs.getString("username", null)
+        val savedToxId = prefs.getString("tox_id", null)
+        val savedNickname = prefs.getString("nickname", null)
 
-        return if (savedJamiId != null) {
+        return if (savedToxId != null) {
             val account = Account(
-                jamiId = savedJamiId,
-                username = savedUsername,
-                isRegisteredOnNameServer = prefs.getBoolean("is_registered", false)
+                toxId = savedToxId,
+                nickname = savedNickname
             )
-            jamiBridge.restoreAccount(account)
-            loadPersistedBootstrapNodes()?.let { jamiBridge.updateBootstrapNodes(it) }
+            toxBridge.restoreAccount(account)
+            loadPersistedBootstrapNodes()?.let { toxBridge.updateBootstrapNodes(it) }
             account
         } else {
             createAccount(null)
         }
     }
 
-    fun createAccount(username: String?): Account {
-        val account = jamiBridge.createAccount(username)
+    fun createAccount(nickname: String?): Account {
+        val account = toxBridge.createAccount(nickname)
         prefs.edit()
-            .putString("jami_id", account.jamiId)
-            .putString("username", account.username)
-            .putBoolean("is_registered", account.isRegisteredOnNameServer)
+            .putString("tox_id", account.toxId)
+            .putString("nickname", account.nickname)
             .apply()
         return account
-    }
-
-    fun updateNetworkSettings(upnpEnabled: Boolean? = null, turnEnabled: Boolean? = null) {
-        jamiBridge.updateAccountSettings(upnpEnabled, turnEnabled)
     }
 
     /**
      * Logs out of the identity stored on this device. Without an exported backup archive+
      * password, this identity cannot be recovered afterwards - there is no server to fetch it
-     * back from, by design (NFT-1). Clears every persisted preference (jami_id, username,
+     * back from, by design (NFT-1). Clears every persisted preference (tox_id, nickname,
      * bootstrap nodes) so [hasAccount] reports false and onboarding starts fresh.
      */
     fun logout() {
         prefs.edit().clear().apply()
-        jamiBridge.logout()
+        toxBridge.logout()
     }
 
-    /** Adds a manual OpenDHT bootstrap node (FR-6.1); no-op if blank or already present. */
+    /** Adds a manual Tox DHT bootstrap node (FR-6.1): must be a `host:port:public-key` triple,
+     *  mirroring c-toxcore's bootstrap format; no-op if blank, malformed or already present. */
     fun addBootstrapNode(node: String) {
         val trimmed = node.trim()
         if (trimmed.isEmpty()) return
+        val parts = trimmed.split(":")
+        if (parts.size != 3 || parts.any { it.isBlank() }) return
         val current = currentAccount.value ?: return
         if (current.bootstrapNodes.contains(trimmed)) return
         val updated = current.bootstrapNodes + trimmed
-        jamiBridge.updateBootstrapNodes(updated)
+        toxBridge.updateBootstrapNodes(updated)
         persistBootstrapNodes(updated)
     }
 
@@ -96,7 +93,7 @@ class AccountRepository(private val context: Context) {
         val current = currentAccount.value ?: return
         if (current.bootstrapNodes.size <= 1) return
         val updated = current.bootstrapNodes - node
-        jamiBridge.updateBootstrapNodes(updated)
+        toxBridge.updateBootstrapNodes(updated)
         persistBootstrapNodes(updated)
     }
 
@@ -109,40 +106,38 @@ class AccountRepository(private val context: Context) {
 
     fun exportAccountBackup(password: String): String {
         val account = currentAccount.value ?: return ""
-        return "$BACKUP_PREFIX|${account.jamiId}|${account.username.orEmpty()}|${password.hashCode()}"
+        return "$BACKUP_PREFIX|${account.toxId}|${account.nickname.orEmpty()}|${password.hashCode()}"
     }
 
     /**
      * Parses a bundle produced by [exportAccountBackup] and, if the password matches, restores
      * that identity (rather than fabricating a brand-new random one, which is what a "mock
      * import" that ignores its input would do). Returns null on a malformed bundle or wrong
-     * password, mirroring how a real libjami archive import would reject a bad passphrase.
+     * password, mirroring how a real c-toxcore savedata import would reject a bad passphrase.
      */
     fun importAccountBackup(backupPayload: String, password: String): Account? {
         val parts = backupPayload.split("|")
         if (parts.size != 4 || parts[0] != BACKUP_PREFIX) return null
 
-        val (_, jamiId, usernameRaw, passwordHash) = parts
+        val (_, toxId, nicknameRaw, passwordHash) = parts
         if (passwordHash.toIntOrNull() != password.hashCode()) return null
-        if (jamiId.isBlank()) return null
+        if (toxId.isBlank()) return null
 
-        val username = usernameRaw.ifEmpty { null }
+        val nickname = nicknameRaw.ifEmpty { null }
         val account = Account(
-            jamiId = jamiId,
-            username = username,
-            isRegisteredOnNameServer = username != null
+            toxId = toxId,
+            nickname = nickname
         )
-        jamiBridge.restoreAccount(account)
+        toxBridge.restoreAccount(account)
         prefs.edit()
-            .putString("jami_id", account.jamiId)
-            .putString("username", account.username)
-            .putBoolean("is_registered", account.isRegisteredOnNameServer)
+            .putString("tox_id", account.toxId)
+            .putString("nickname", account.nickname)
             .apply()
         return account
     }
 
     companion object {
-        private const val BACKUP_PREFIX = "MESHLY_BACKUP_V1"
+        private const val BACKUP_PREFIX = "MESHLY_BACKUP_V2"
         private const val KEY_BOOTSTRAP_NODES = "bootstrap_nodes"
     }
 }

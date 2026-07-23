@@ -10,8 +10,8 @@
     <string name="notification_channel_message_desc">Yeni doğrudan mesaj bildirimleri</string>
 
     <!-- Foreground service / notification content -->
-    <string name="notification_daemon_title">Meshly P2P Çekirdeği</string>
-    <string name="notification_daemon_text">Merkezi olmayan OpenDHT ağına bağlandı</string>
+    <string name="notification_daemon_title">Meshly Tox Çekirdeği</string>
+    <string name="notification_daemon_text">Merkezi olmayan Tox ağına bağlandı</string>
     <string name="notification_incoming_audio_call">Gelen sesli arama</string>
     <string name="notification_incoming_video_call">Gelen görüntülü arama</string>
     <string name="notification_message_attachment_fallback">Bir ek gönderildi</string>
@@ -36,10 +36,8 @@
     <string name="content_desc_toggle_mute">Mikrofonu aç/kapat</string>
     <string name="content_desc_toggle_camera">Kamerayı aç/kapat</string>
     <string name="content_desc_flip_camera">Kamerayı değiştir</string>
-    <string name="content_desc_toggle_screen_share">Ekran paylaşımını aç/kapat</string>
     <string name="content_desc_hang_up">Aramayı sonlandır</string>
-    <string name="video_preview_placeholder">Video önizleme yüzeyi (2. Aşama: libjami video çıkışı)</string>
-    <string name="screen_share_placeholder">Ekranınız paylaşılıyor (2. Aşama: MediaProjection + libjami video çıkışı)</string>
+    <string name="video_preview_placeholder">Video önizleme yüzeyi (2. Aşama: ToxAV video çıkışı)</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Sohbetler</string>
@@ -57,15 +55,19 @@
     <string name="calls_empty">Arama yapmak için onaylanmış bir kişi ekleyin.</string>
     <string name="ongoing_audio_call_with">%1$s ile sesli görüşme sürüyor</string>
     <string name="ongoing_video_call_with">%1$s ile görüntülü görüşme sürüyor</string>
+    <string name="content_desc_back">Geri</string>
     <string name="content_desc_audio_call">Sesli arama</string>
     <string name="content_desc_video_call">Görüntülü arama</string>
+    <string name="call_target_offline_hint">Bu kişi çevrimdışı ve şu anda aranamıyor</string>
 
     <!-- Contacts screen -->
     <string name="contacts_title">Kişiler</string>
-    <string name="contact_search_label">Jami ID veya kullanıcı adı</string>
-    <string name="contact_search_error_invalid">Tam bir Jami ID girin (jami: ve ardından 40 onaltılık karakter) veya geçerli bir kullanıcı adı girin</string>
+    <string name="contact_search_label">Tox ID</string>
+    <string name="contact_search_error_invalid">Geçerli bir Tox ID girin (76 onaltılık karakter)</string>
     <string name="contact_search_error_duplicate">Zaten kişi listenizde veya bekleyen bir isteğiniz var</string>
     <string name="content_desc_add_contact">Kişi ekle</string>
+    <string name="content_desc_scan_qr">QR kodu tara</string>
+    <string name="contact_request_message_label">Mesaj (isteğe bağlı)</string>
     <string name="tab_contacts_count">Kişiler (%1$d)</string>
     <string name="tab_requests_count">İstekler (%1$d)</string>
     <string name="tab_blocked_count">Engellenenler (%1$d)</string>
@@ -89,16 +91,19 @@
     <string name="message_status_delivered">İletildi</string>
     <string name="message_status_read">Okundu</string>
     <string name="message_status_failed">Gönderilemedi</string>
+    <string name="chat_peer_offline_banner">Bu kişi çevrimdışı — Tox\'ta mesajların iletilebilmesi için ikinizin de aynı anda çevrimiçi olması gerekir.</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">GNU Jami tarafından desteklenen, sunucusuz, uçtan uca şifreli P2P mesajlaşma ve arama.</string>
-    <string name="action_create_new_id">Yeni bir Jami ID oluştur</string>
+    <string name="onboarding_tagline">Tox ile çalışan, sunucusuz, uçtan uca şifreli P2P mesajlaşma ve arama.</string>
+    <string name="action_create_new_id">Yeni bir Tox ID oluştur</string>
     <string name="action_import_existing">Mevcut bir hesabı içe aktar</string>
-    <string name="choose_username_title">Kullanıcı adı seçin (isteğe bağlı)</string>
-    <string name="choose_username_desc">Jami ID anahtar çiftiniz cihazda oluşturulacak. Kullanıcı adı kaydetmek, başkalarının sizi ham ID yerine adınızla bulmasını sağlar.</string>
-    <string name="label_username">Kullanıcı adı</string>
-    <string name="action_generate_id">Jami ID oluştur</string>
+    <string name="choose_nickname_title">Yerel bir takma ad belirleyin (isteğe bağlı)</string>
+    <string name="choose_nickname_desc">Tox ID anahtar çiftiniz cihazda oluşturulacak. İsteğe bağlı olarak yerel bir takma ad belirleyebilirsiniz — bu ad hiçbir yerde kaydedilmez veya aranamaz, yalnızca zaten eklediğiniz kişilere görünür.</string>
+    <string name="label_nickname">Takma ad</string>
+    <string name="action_generate_id">Tox ID oluştur</string>
     <string name="action_back">Geri</string>
+    <string name="action_continue">Devam et</string>
+    <string name="own_tox_id_qr_title">Tox ID\'m</string>
     <string name="import_account_title">Hesap arşivini içe aktar</string>
     <string name="import_account_desc">Başka bir cihazda oluşturulan parola korumalı hesap yedeğini yapıştırın (o cihazda Ayarlar, ardından Hesabı dışa aktar), ardından parolasını girin.</string>
     <string name="label_backup_archive">Yedek arşivi</string>
@@ -108,7 +113,7 @@
 
     <!-- Export account dialog -->
     <string name="export_account_title">Hesabı dışa aktar</string>
-    <string name="export_account_warning">Anahtar yedeğinizi bir parolayla koruyun. Bu arşive ve parolaya sahip olan herkes Jami ID\'nizi taklit edebilir.</string>
+    <string name="export_account_warning">Anahtar yedeğinizi bir parolayla koruyun. Bu arşive ve parolaya sahip olan herkes Tox ID\'nizi taklit edebilir.</string>
     <string name="label_confirm_password">Parolayı onayla</string>
     <string name="export_ready_hint">Arşiv hazır. Başka bir cihazda geri yüklemek için bunu ve parolayı kopyalayın:</string>
     <string name="action_export">Dışa aktar</string>
@@ -117,18 +122,16 @@
     <!-- Settings screen -->
     <string name="settings_title">Ayarlar</string>
     <string name="section_account">Hesap</string>
-    <string name="label_no_username">Kayıtlı kullanıcı adı yok</string>
+    <string name="label_no_nickname">Takma ad belirlenmedi</string>
+    <string name="content_desc_show_qr">Tox ID\'mi QR kod olarak göster</string>
     <string name="export_account_item_title">Hesabı dışa aktar</string>
-    <string name="export_account_item_desc">Jami ID anahtarlarınızın parola korumalı yedeği</string>
+    <string name="export_account_item_desc">Tox ID anahtarlarınızın parola korumalı yedeği</string>
     <string name="section_network">Ağ</string>
-    <string name="upnp_title">UPnP</string>
-    <string name="upnp_desc">Doğrudan P2P bağlantıları için otomatik yönlendirici port eşleme</string>
-    <string name="turn_title">TURN aktarımı</string>
-    <string name="turn_desc">Doğrudan P2P bağlantısı başarısız olduğunda kullanılan yedek aktarım</string>
-    <string name="bootstrap_nodes_title">DHT önyükleme düğümleri</string>
-    <string name="bootstrap_nodes_desc">OpenDHT ağına giriş noktaları. Bir düğüm devre dışı kaldığında uygulamanın çalışmaya devam etmesi için en az iki bağımsız düğüm bulundurun.</string>
+    <string name="bootstrap_nodes_title">Önyükleme düğümleri</string>
+    <string name="bootstrap_nodes_desc">Tox ağına giriş noktaları. Bir düğüm devre dışı kaldığında uygulamanın çalışmaya devam etmesi için en az iki bağımsız düğüm bulundurun.</string>
     <string name="content_desc_remove_node">Düğümü kaldır</string>
-    <string name="label_host_port">sunucu:port</string>
+    <string name="label_host_port_pubkey">Sunucu:Port:Genel anahtar</string>
+    <string name="bootstrap_node_invalid_format">Önyükleme düğümünü sunucu:port:genel-anahtar biçiminde girin</string>
     <string name="content_desc_add_node">Düğüm ekle</string>
     <string name="section_diagnostics">Tanılama</string>
     <string name="export_logs_title">Tanılama günlüklerini dışa aktar</string>

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,15 +26,15 @@ import java.net.URLEncoder
 object Routes {
     const val ONBOARDING = "onboarding"
     const val MAIN = "main"
-    const val CHAT = "chat/{jamiId}/{displayName}"
-    const val CALL = "call/{jamiId}/{displayName}/{callType}/{outgoing}"
+    const val CHAT = "chat/{toxId}/{displayName}"
+    const val CALL = "call/{toxId}/{displayName}/{callType}/{outgoing}"
 
     fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
     fun decode(value: String): String = URLDecoder.decode(value, "UTF-8")
 
-    fun chat(jamiId: String, displayName: String): String =
-        "chat/${encode(jamiId)}/${encode(displayName)}"
+    fun chat(toxId: String, displayName: String): String =
+        "chat/${encode(toxId)}/${encode(displayName)}"
 
-    fun call(jamiId: String, displayName: String, callType: String, outgoing: Boolean): String =
-        "call/${encode(jamiId)}/${encode(displayName)}/$callType/$outgoing"
+    fun call(toxId: String, displayName: String, callType: String, outgoing: Boolean): String =
+        "call/${encode(toxId)}/${encode(displayName)}/$callType/$outgoing"
 }

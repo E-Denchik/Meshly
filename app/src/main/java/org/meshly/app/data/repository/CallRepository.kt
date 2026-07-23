@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,32 +21,30 @@
 package org.meshly.app.data.repository
 
 import kotlinx.coroutines.flow.StateFlow
-import org.meshly.app.core.JamiBridge
+import org.meshly.app.core.ToxBridge
 import org.meshly.app.data.model.CallSession
 import org.meshly.app.data.model.CallType
 
 class CallRepository(
-    private val jamiBridge: JamiBridge = JamiBridge.getInstance()
+    private val toxBridge: ToxBridge = ToxBridge.getInstance()
 ) {
-    val activeCall: StateFlow<CallSession?> = jamiBridge.activeCall
+    val activeCall: StateFlow<CallSession?> = toxBridge.activeCall
 
-    fun placeCall(peerJamiId: String, peerDisplayName: String, type: CallType): CallSession {
-        return jamiBridge.placeCall(peerJamiId, peerDisplayName, type)
+    fun placeCall(peerToxId: String, peerDisplayName: String, type: CallType): CallSession {
+        return toxBridge.placeCall(peerToxId, peerDisplayName, type)
     }
 
     fun acceptCall(callId: String) {
-        jamiBridge.acceptCall(callId)
+        toxBridge.acceptCall(callId)
     }
 
     fun hangUpCall(callId: String) {
-        jamiBridge.hangUpCall(callId)
+        toxBridge.hangUpCall(callId)
     }
 
-    fun toggleMute(): Boolean = jamiBridge.toggleMute()
+    fun toggleMute(): Boolean = toxBridge.toggleMute()
 
-    fun toggleCamera(): Boolean = jamiBridge.toggleCamera()
+    fun toggleCamera(): Boolean = toxBridge.toggleCamera()
 
-    fun flipCamera(): Boolean = jamiBridge.flipCamera()
-
-    fun toggleScreenShare(): Boolean = jamiBridge.toggleScreenShare()
+    fun flipCamera(): Boolean = toxBridge.flipCamera()
 }

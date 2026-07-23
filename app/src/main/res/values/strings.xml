@@ -10,8 +10,8 @@
     <string name="notification_channel_message_desc">New direct message notifications</string>
 
     <!-- Foreground service / notification content -->
-    <string name="notification_daemon_title">Meshly P2P Core</string>
-    <string name="notification_daemon_text">Connected to decentralized OpenDHT network</string>
+    <string name="notification_daemon_title">Meshly Tox Core</string>
+    <string name="notification_daemon_text">Connected to the decentralized Tox network</string>
     <string name="notification_incoming_audio_call">Incoming audio call</string>
     <string name="notification_incoming_video_call">Incoming video call</string>
     <string name="notification_message_attachment_fallback">Sent an attachment</string>
@@ -36,10 +36,8 @@
     <string name="content_desc_toggle_mute">Toggle mute</string>
     <string name="content_desc_toggle_camera">Toggle camera</string>
     <string name="content_desc_flip_camera">Flip camera</string>
-    <string name="content_desc_toggle_screen_share">Toggle screen sharing</string>
     <string name="content_desc_hang_up">Hang up</string>
-    <string name="video_preview_placeholder">Video preview surface (Phase 2: libjami video sink)</string>
-    <string name="screen_share_placeholder">Sharing your screen (Phase 2: MediaProjection + libjami video sink)</string>
+    <string name="video_preview_placeholder">Video preview surface (Phase 2: ToxAV video sink)</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Chats</string>
@@ -57,15 +55,19 @@
     <string name="calls_empty">Add a confirmed contact to place a call.</string>
     <string name="ongoing_audio_call_with">Ongoing audio call with %1$s</string>
     <string name="ongoing_video_call_with">Ongoing video call with %1$s</string>
+    <string name="content_desc_back">Back</string>
     <string name="content_desc_audio_call">Audio call</string>
     <string name="content_desc_video_call">Video call</string>
+    <string name="call_target_offline_hint">This contact is offline and can\'t be called right now</string>
 
     <!-- Contacts screen -->
     <string name="contacts_title">Contacts</string>
-    <string name="contact_search_label">Jami ID or username</string>
-    <string name="contact_search_error_invalid">Enter a full Jami ID (jami: followed by 40 hex characters) or a valid username</string>
+    <string name="contact_search_label">Tox ID</string>
+    <string name="contact_search_error_invalid">Enter a valid 76-character Tox ID</string>
     <string name="contact_search_error_duplicate">Already a contact or pending request</string>
     <string name="content_desc_add_contact">Add contact</string>
+    <string name="content_desc_scan_qr">Scan QR code</string>
+    <string name="contact_request_message_label">Message (optional)</string>
     <string name="tab_contacts_count">Contacts (%1$d)</string>
     <string name="tab_requests_count">Requests (%1$d)</string>
     <string name="tab_blocked_count">Blocked (%1$d)</string>
@@ -89,16 +91,19 @@
     <string name="message_status_delivered">Delivered</string>
     <string name="message_status_read">Read</string>
     <string name="message_status_failed">Failed to send</string>
+    <string name="chat_peer_offline_banner">This contact is offline — Tox requires both of you online at the same time for messages to be delivered.</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">Serverless, end-to-end encrypted P2P messaging and calls, powered by GNU Jami.</string>
-    <string name="action_create_new_id">Create a new Jami ID</string>
+    <string name="onboarding_tagline">Serverless, end-to-end encrypted P2P messaging and calls, powered by Tox.</string>
+    <string name="action_create_new_id">Create a new Tox ID</string>
     <string name="action_import_existing">Import an existing account</string>
-    <string name="choose_username_title">Choose a username (optional)</string>
-    <string name="choose_username_desc">Your Jami ID keypair will be generated on-device. Registering a username lets others find you by name instead of the raw ID.</string>
-    <string name="label_username">Username</string>
-    <string name="action_generate_id">Generate Jami ID</string>
+    <string name="choose_nickname_title">Set a local nickname (optional)</string>
+    <string name="choose_nickname_desc">Your Tox ID keypair will be generated on-device. You can optionally set a local nickname — it\'s never registered or searchable, only shown to people you already added.</string>
+    <string name="label_nickname">Nickname</string>
+    <string name="action_generate_id">Generate Tox ID</string>
     <string name="action_back">Back</string>
+    <string name="action_continue">Continue</string>
+    <string name="own_tox_id_qr_title">My Tox ID</string>
     <string name="import_account_title">Import account archive</string>
     <string name="import_account_desc">Paste the password-protected account backup created from another device (Settings, then Export account there), then enter its password.</string>
     <string name="label_backup_archive">Backup archive</string>
@@ -108,7 +113,7 @@
 
     <!-- Export account dialog -->
     <string name="export_account_title">Export account</string>
-    <string name="export_account_warning">Protect your key backup with a password. Anyone with this archive and password can impersonate your Jami ID.</string>
+    <string name="export_account_warning">Protect your key backup with a password. Anyone with this archive and password can impersonate your Tox ID.</string>
     <string name="label_confirm_password">Confirm password</string>
     <string name="export_ready_hint">Archive ready. Copy this and the password to restore on another device:</string>
     <string name="action_export">Export</string>
@@ -117,18 +122,16 @@
     <!-- Settings screen -->
     <string name="settings_title">Settings</string>
     <string name="section_account">Account</string>
-    <string name="label_no_username">No username registered</string>
+    <string name="label_no_nickname">No nickname set</string>
+    <string name="content_desc_show_qr">Show my Tox ID as QR code</string>
     <string name="export_account_item_title">Export account</string>
-    <string name="export_account_item_desc">Password-protected backup of your Jami ID keys</string>
+    <string name="export_account_item_desc">Password-protected backup of your Tox ID keys</string>
     <string name="section_network">Network</string>
-    <string name="upnp_title">UPnP</string>
-    <string name="upnp_desc">Automatic router port mapping for direct P2P connections</string>
-    <string name="turn_title">TURN relay</string>
-    <string name="turn_desc">Fallback relay when direct P2P connectivity fails</string>
     <string name="bootstrap_nodes_title">DHT bootstrap nodes</string>
-    <string name="bootstrap_nodes_desc">Entry points into the OpenDHT network. Keep at least two independent nodes so the app survives one going down.</string>
+    <string name="bootstrap_nodes_desc">Entry points into the Tox network. Keep at least two independent nodes so the app survives one going down.</string>
     <string name="content_desc_remove_node">Remove node</string>
-    <string name="label_host_port">host:port</string>
+    <string name="label_host_port_pubkey">Host:Port:Public key</string>
+    <string name="bootstrap_node_invalid_format">Enter a bootstrap node as host:port:public-key</string>
     <string name="content_desc_add_node">Add node</string>
     <string name="section_diagnostics">Diagnostics</string>
     <string name="export_logs_title">Export diagnostic logs</string>

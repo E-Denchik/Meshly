@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ class CallViewModel(application: Application) : AndroidViewModel(application) {
     private val callRepository = CallRepository()
     val activeCall: StateFlow<CallSession?> = callRepository.activeCall
 
-    fun placeCall(peerJamiId: String, peerDisplayName: String, type: CallType): CallSession {
-        val session = callRepository.placeCall(peerJamiId, peerDisplayName, type)
+    fun placeCall(peerToxId: String, peerDisplayName: String, type: CallType): CallSession {
+        val session = callRepository.placeCall(peerToxId, peerDisplayName, type)
         startCallService(session)
         return session
     }
@@ -52,7 +52,6 @@ class CallViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleMute() = callRepository.toggleMute()
     fun toggleCamera() = callRepository.toggleCamera()
     fun flipCamera() = callRepository.flipCamera()
-    fun toggleScreenShare() = callRepository.toggleScreenShare()
 
     private fun startCallService(session: CallSession) {
         val context = getApplication<Application>()

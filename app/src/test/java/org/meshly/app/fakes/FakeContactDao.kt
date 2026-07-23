@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,24 +34,24 @@ class FakeContactDao : ContactDao {
     override fun getContactsByStatus(status: String) =
         MutableStateFlow(state.value.filter { it.status == status })
 
-    override suspend fun getContactById(jamiId: String): ContactEntity? =
-        state.value.firstOrNull { it.jamiId == jamiId }
+    override suspend fun getContactById(toxId: String): ContactEntity? =
+        state.value.firstOrNull { it.toxId == toxId }
 
     override suspend fun countContacts(): Int = state.value.size
 
     override suspend fun insertOrUpdateContact(contact: ContactEntity) {
-        state.value = state.value.filterNot { it.jamiId == contact.jamiId } + contact
+        state.value = state.value.filterNot { it.toxId == contact.toxId } + contact
     }
 
-    override suspend fun updateStatus(jamiId: String, status: String) {
-        state.value = state.value.map { if (it.jamiId == jamiId) it.copy(status = status) else it }
+    override suspend fun updateStatus(toxId: String, status: String) {
+        state.value = state.value.map { if (it.toxId == toxId) it.copy(status = status) else it }
     }
 
-    override suspend fun updatePresence(jamiId: String, presence: String) {
-        state.value = state.value.map { if (it.jamiId == jamiId) it.copy(presence = presence) else it }
+    override suspend fun updatePresence(toxId: String, presence: String) {
+        state.value = state.value.map { if (it.toxId == toxId) it.copy(presence = presence) else it }
     }
 
-    override suspend fun deleteContact(jamiId: String) {
-        state.value = state.value.filterNot { it.jamiId == jamiId }
+    override suspend fun deleteContact(toxId: String) {
+        state.value = state.value.filterNot { it.toxId == toxId }
     }
 }

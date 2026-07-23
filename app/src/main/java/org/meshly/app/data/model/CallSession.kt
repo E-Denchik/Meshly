@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,13 +35,12 @@ enum class CallState {
 
 data class CallSession(
     val callId: String,
-    val peerJamiId: String,
+    val peerToxId: String,
     val peerDisplayName: String,
     val callType: CallType,
     val state: CallState,
     val isMuted: Boolean = false,
     val isCameraOn: Boolean = true,
     val isFrontCamera: Boolean = true,
-    val isScreenSharing: Boolean = false,
-    val startTime: Long = 0L
+    val startTime: Long = System.currentTimeMillis()
 )

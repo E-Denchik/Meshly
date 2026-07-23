@@ -74,6 +74,10 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    // QR code (Tox ID scan/generate)
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.embedded)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

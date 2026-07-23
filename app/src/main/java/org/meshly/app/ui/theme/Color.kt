@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ val MeshOnSurfaceVariantDark = Color(0xFFC7C5D0)
 val MeshOutlineDark = Color(0xFF90909A)
 
 /** Fixed palette used to derive a deterministic per-contact [org.meshly.app.ui.components.Avatar]
- *  color from a Jami ID, so the same contact always gets the same color across the app. */
+ *  color from a Tox ID, so the same contact always gets the same color across the app. */
 val AvatarPalette = listOf(
     Color(0xFF4A55D6), Color(0xFF2E7D63), Color(0xFFB5541F),
     Color(0xFF9A3B7A), Color(0xFF3D6E9E), Color(0xFF7A6A1E),

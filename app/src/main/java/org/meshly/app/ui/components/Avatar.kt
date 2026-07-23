@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ import kotlin.math.abs
 
 /**
  * A circular initials avatar with a color deterministically derived from [seed] (typically the
- * contact's Jami ID) so the same person always renders the same color everywhere in the app,
+ * contact's Tox ID) so the same person always renders the same color everywhere in the app,
  * without needing a real profile picture - which pure P2P identities don't have by default.
  */
 @Composable

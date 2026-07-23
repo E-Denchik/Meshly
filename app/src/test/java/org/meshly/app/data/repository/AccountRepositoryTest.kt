@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Runs against a Robolectric-simulated Context because [AccountRepository] persists the Jami ID
+ * Runs against a Robolectric-simulated Context because [AccountRepository] persists the Tox ID
  * keypair reference in real Android SharedPreferences. Robolectric gives each test method an
  * isolated app sandbox, so no state leaks between tests here.
  */
@@ -42,6 +42,9 @@ class AccountRepositoryTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
+    private val validBootstrapNode =
+        "bootstrap.example.org:33445:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234abcd"
+
     @Test
     fun `hasAccount is false before any account is created`() {
         val repository = AccountRepository(context)
@@ -49,55 +52,66 @@ class AccountRepositoryTest {
     }
 
     @Test
-    fun `loadOrInitAccount creates and persists a jami id keypair on first launch`() {
+    fun `loadOrInitAccount creates and persists a tox id keypair on first launch`() {
         val repository = AccountRepository(context)
 
         val account = repository.loadOrInitAccount()
 
-        assertTrue(account.jamiId.startsWith("jami:"))
+        assertEquals(76, account.toxId.length)
         assertTrue(repository.hasAccount())
     }
 
     @Test
-    fun `loadOrInitAccount reuses the persisted jami id across app restarts`() {
+    fun `loadOrInitAccount reuses the persisted tox id across app restarts`() {
         val firstRepository = AccountRepository(context)
         val created = firstRepository.loadOrInitAccount()
 
         val secondRepository = AccountRepository(context)
         val reloaded = secondRepository.loadOrInitAccount()
 
-        assertEquals(created.jamiId, reloaded.jamiId)
-        assertEquals(created.jamiId, secondRepository.currentAccount.value?.jamiId)
+        assertEquals(created.toxId, reloaded.toxId)
+        assertEquals(created.toxId, secondRepository.currentAccount.value?.toxId)
     }
 
     @Test
-    fun `exportAccountBackup embeds the jami id`() {
+    fun `exportAccountBackup embeds the tox id`() {
         val repository = AccountRepository(context)
         repository.loadOrInitAccount()
 
         val bundle = repository.exportAccountBackup("correct horse battery staple")
 
         assertTrue(bundle.isNotEmpty())
-        assertTrue(bundle.contains(repository.currentAccount.value?.jamiId.orEmpty()))
+        assertTrue(bundle.contains(repository.currentAccount.value?.toxId.orEmpty()))
     }
 
     @Test
-    fun `addBootstrapNode appends a node and persists it across restarts`() {
+    fun `addBootstrapNode appends a valid node and persists it across restarts`() {
         val repository = AccountRepository(context)
         repository.loadOrInitAccount()
 
-        repository.addBootstrapNode("bootstrap.example.org:4222")
+        repository.addBootstrapNode(validBootstrapNode)
 
         assertTrue(
-            repository.currentAccount.value?.bootstrapNodes?.contains("bootstrap.example.org:4222") == true
+            repository.currentAccount.value?.bootstrapNodes?.contains(validBootstrapNode) == true
         )
 
         val secondRepository = AccountRepository(context)
         secondRepository.loadOrInitAccount()
 
         assertTrue(
-            secondRepository.currentAccount.value?.bootstrapNodes?.contains("bootstrap.example.org:4222") == true
+            secondRepository.currentAccount.value?.bootstrapNodes?.contains(validBootstrapNode) == true
         )
+    }
+
+    @Test
+    fun `addBootstrapNode ignores a node that is not a host-port-key triple`() {
+        val repository = AccountRepository(context)
+        repository.loadOrInitAccount()
+        val before = repository.currentAccount.value?.bootstrapNodes.orEmpty()
+
+        repository.addBootstrapNode("not-a-valid-node:33445")
+
+        assertEquals(before, repository.currentAccount.value?.bootstrapNodes)
     }
 
     @Test

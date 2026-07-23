@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,13 +31,17 @@ import org.meshly.app.data.model.MessageStatus
 import java.util.UUID
 
 /**
- * JamiBridge is Stage 1's mock/stub engine: it never calls into native libjami (System.loadLibrary
- * always fails in the JVM unit test sandbox), so these tests exercise the pure-Kotlin state
- * machine that stands in for the JNI daemon until Phase 2 wires up the real bindings.
+ * ToxBridge is Stage 1's mock/stub engine: it never calls into native c-toxcore/ToxAV
+ * (System.loadLibrary always fails in the JVM unit test sandbox), so these tests exercise the
+ * pure-Kotlin state machine that stands in for the JNI daemon until Phase 2 wires up the real
+ * bindings.
  */
-class JamiBridgeTest {
+class ToxBridgeTest {
 
-    private val bridge = JamiBridge.getInstance()
+    private val bridge = ToxBridge.getInstance()
+
+    private fun fakeToxId(): String =
+        UUID.randomUUID().toString().replace("-", "").let { (it + it).take(76) }
 
     @Test
     fun `native engine is unavailable in the JVM unit test sandbox`() {
@@ -45,27 +49,19 @@ class JamiBridgeTest {
     }
 
     @Test
-    fun `createAccount with a username produces a jami id and registers the name`() {
-        val username = "alice-${UUID.randomUUID()}"
-        val account = bridge.createAccount(username)
+    fun `createAccount produces a 76-character hex tox id`() {
+        val nickname = "alice-${UUID.randomUUID()}"
+        val account = bridge.createAccount(nickname)
 
-        assertTrue(account.jamiId.startsWith("jami:"))
-        assertEquals(username, account.username)
-        assertTrue(account.isRegisteredOnNameServer)
+        assertEquals(76, account.toxId.length)
+        assertTrue(account.toxId.matches(Regex("^[0-9a-fA-F]{76}$")))
+        assertEquals(nickname, account.nickname)
         assertEquals(account, bridge.currentAccount.value)
     }
 
     @Test
-    fun `createAccount without a username is not registered on the name server`() {
-        val account = bridge.createAccount(null)
-
-        assertNull(account.username)
-        assertFalse(account.isRegisteredOnNameServer)
-    }
-
-    @Test
     fun `sendTextMessage maps to an outgoing sent message`() {
-        val peerId = "jami:peer-${UUID.randomUUID()}"
+        val peerId = fakeToxId()
         val messageId = UUID.randomUUID().toString()
         val message = bridge.sendTextMessage(messageId, peerId, "hello mesh")
 
@@ -78,7 +74,7 @@ class JamiBridgeTest {
 
     @Test
     fun `placeCall then acceptCall transitions the active call to connected`() {
-        val peerId = "jami:peer-${UUID.randomUUID()}"
+        val peerId = fakeToxId()
         val session = bridge.placeCall(peerId, "Bob", CallType.AUDIO)
 
         assertEquals(CallState.DIALING, session.state)
@@ -91,7 +87,7 @@ class JamiBridgeTest {
 
     @Test
     fun `hangUpCall clears the active call`() {
-        val peerId = "jami:peer-${UUID.randomUUID()}"
+        val peerId = fakeToxId()
         val session = bridge.placeCall(peerId, "Carol", CallType.VIDEO)
 
         bridge.hangUpCall(session.callId)
@@ -101,7 +97,7 @@ class JamiBridgeTest {
 
     @Test
     fun `toggleMute toggleCamera and flipCamera flip the active call flags`() {
-        val peerId = "jami:peer-${UUID.randomUUID()}"
+        val peerId = fakeToxId()
         bridge.placeCall(peerId, "Dave", CallType.VIDEO)
 
         val muted = bridge.toggleMute()
@@ -118,7 +114,7 @@ class JamiBridgeTest {
     @Test
     fun `logout clears the current account and any active call`() {
         bridge.createAccount("erin-${UUID.randomUUID()}")
-        val peerId = "jami:peer-${UUID.randomUUID()}"
+        val peerId = fakeToxId()
         bridge.placeCall(peerId, "Frank", CallType.AUDIO)
 
         bridge.logout()

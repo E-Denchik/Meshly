@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ import org.meshly.app.data.repository.ChatRepository
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val chatRepository = ChatRepository(
-        (application as MeshlyApplication).database.chatMessageDao()
+        (application as MeshlyApplication).database.chatMessageDao(),
+        application.database.contactDao()
     )
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())

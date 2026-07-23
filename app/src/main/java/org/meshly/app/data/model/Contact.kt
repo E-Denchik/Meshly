@@ -2,7 +2,7 @@
  * Copyright (C) 2026 The Meshly Project Authors
  *
  * This file is part of Meshly, a decentralized peer-to-peer messenger
- * built on top of GNU Jami's core engine (libjami).
+ * built on top of Tox (c-toxcore + ToxAV).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,10 +34,9 @@ enum class PresenceStatus {
 }
 
 data class Contact(
-    val jamiId: String,
+    val toxId: String,
     val displayName: String,
-    val username: String? = null,
     val status: ContactStatus = ContactStatus.CONFIRMED,
-    val presence: PresenceStatus = PresenceStatus.OFFLINE,
+    val presence: PresenceStatus = PresenceStatus.UNKNOWN,
     val addedAt: Long = System.currentTimeMillis()
 )

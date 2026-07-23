@@ -10,8 +10,8 @@
     <string name="notification_channel_message_desc">Notifications de nouveaux messages directs</string>
 
     <!-- Foreground service / notification content -->
-    <string name="notification_daemon_title">Cœur P2P Meshly</string>
-    <string name="notification_daemon_text">Connecté au réseau OpenDHT décentralisé</string>
+    <string name="notification_daemon_title">Cœur Tox Meshly</string>
+    <string name="notification_daemon_text">Connecté au réseau Tox décentralisé</string>
     <string name="notification_incoming_audio_call">Appel audio entrant</string>
     <string name="notification_incoming_video_call">Appel vidéo entrant</string>
     <string name="notification_message_attachment_fallback">A envoyé une pièce jointe</string>
@@ -36,10 +36,8 @@
     <string name="content_desc_toggle_mute">Activer/désactiver le micro</string>
     <string name="content_desc_toggle_camera">Activer/désactiver la caméra</string>
     <string name="content_desc_flip_camera">Changer de caméra</string>
-    <string name="content_desc_toggle_screen_share">Activer/désactiver le partage d\'écran</string>
     <string name="content_desc_hang_up">Raccrocher</string>
-    <string name="video_preview_placeholder">Aperçu vidéo (Phase 2 : sortie vidéo libjami)</string>
-    <string name="screen_share_placeholder">Partage d\'écran en cours (Phase 2 : MediaProjection + sortie vidéo libjami)</string>
+    <string name="video_preview_placeholder">Aperçu vidéo (Phase 2 : sortie vidéo ToxAV)</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Discussions</string>
@@ -57,15 +55,19 @@
     <string name="calls_empty">Ajoutez un contact confirmé pour passer un appel.</string>
     <string name="ongoing_audio_call_with">Appel audio en cours avec %1$s</string>
     <string name="ongoing_video_call_with">Appel vidéo en cours avec %1$s</string>
+    <string name="content_desc_back">Retour</string>
     <string name="content_desc_audio_call">Appel audio</string>
     <string name="content_desc_video_call">Appel vidéo</string>
+    <string name="call_target_offline_hint">Ce contact est hors ligne et ne peut pas être appelé pour le moment</string>
 
     <!-- Contacts screen -->
     <string name="contacts_title">Contacts</string>
-    <string name="contact_search_label">ID Jami ou nom d\'utilisateur</string>
-    <string name="contact_search_error_invalid">Saisissez un ID Jami complet (jami: suivi de 40 caractères hexadécimaux) ou un nom d\'utilisateur valide</string>
+    <string name="contact_search_label">ID Tox</string>
+    <string name="contact_search_error_invalid">Saisissez un ID Tox valide (76 caractères hexadécimaux)</string>
     <string name="contact_search_error_duplicate">Déjà dans vos contacts ou demande en attente</string>
     <string name="content_desc_add_contact">Ajouter un contact</string>
+    <string name="content_desc_scan_qr">Scanner un code QR</string>
+    <string name="contact_request_message_label">Message (facultatif)</string>
     <string name="tab_contacts_count">Contacts (%1$d)</string>
     <string name="tab_requests_count">Demandes (%1$d)</string>
     <string name="tab_blocked_count">Bloqués (%1$d)</string>
@@ -89,46 +91,47 @@
     <string name="message_status_delivered">Distribué</string>
     <string name="message_status_read">Lu</string>
     <string name="message_status_failed">Échec de l\'envoi</string>
+    <string name="chat_peer_offline_banner">Ce contact est hors ligne — avec Tox, les messages ne sont livrés que si vous êtes tous les deux en ligne en même temps.</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">Messagerie et appels P2P chiffrés de bout en bout, sans serveur, propulsés par GNU Jami.</string>
-    <string name="action_create_new_id">Créer un nouvel ID Jami</string>
+    <string name="onboarding_tagline">Messagerie et appels P2P chiffrés de bout en bout, sans serveur, propulsés par Tox.</string>
+    <string name="action_create_new_id">Créer un nouvel ID Tox</string>
     <string name="action_import_existing">Importer un compte existant</string>
-    <string name="choose_username_title">Choisissez un nom d\'utilisateur (facultatif)</string>
-    <string name="choose_username_desc">La paire de clés de votre ID Jami sera générée sur l\'appareil. Enregistrer un nom d\'utilisateur permet aux autres de vous trouver par votre nom plutôt que par l\'ID brut.</string>
-    <string name="label_username">Nom d\'utilisateur</string>
-    <string name="action_generate_id">Générer l\'ID Jami</string>
+    <string name="choose_nickname_title">Définir un pseudo local (facultatif)</string>
+    <string name="choose_nickname_desc">La paire de clés de votre ID Tox sera générée sur l\'appareil. Vous pouvez définir un pseudo local — il n\'est jamais enregistré ni recherchable, seules les personnes déjà ajoutées le voient.</string>
+    <string name="label_nickname">Pseudo</string>
+    <string name="action_generate_id">Générer l\'ID Tox</string>
     <string name="action_back">Retour</string>
+    <string name="action_continue">Continuer</string>
+    <string name="own_tox_id_qr_title">Mon ID Tox</string>
     <string name="import_account_title">Importer une archive de compte</string>
     <string name="import_account_desc">Collez la sauvegarde de compte protégée par mot de passe créée sur un autre appareil (dans Paramètres, Exporter le compte), puis saisissez son mot de passe.</string>
     <string name="label_backup_archive">Archive de sauvegarde</string>
     <string name="label_password">Mot de passe</string>
-    <string name="import_failed">Import impossible : l\'archive est invalide ou le mot de passe est incorrect.</string>
+    <string name="import_failed">Import impossible : l\'archive est invalide ou le mot de passe est incorrect.</string>
     <string name="action_import">Importer</string>
 
     <!-- Export account dialog -->
     <string name="export_account_title">Exporter le compte</string>
-    <string name="export_account_warning">Protégez la sauvegarde de vos clés par un mot de passe. Quiconque possède cette archive et ce mot de passe peut usurper votre ID Jami.</string>
+    <string name="export_account_warning">Protégez la sauvegarde de vos clés par un mot de passe. Quiconque possède cette archive et ce mot de passe peut usurper votre ID Tox.</string>
     <string name="label_confirm_password">Confirmer le mot de passe</string>
-    <string name="export_ready_hint">Archive prête. Copiez-la ainsi que le mot de passe pour restaurer le compte sur un autre appareil :</string>
+    <string name="export_ready_hint">Archive prête. Copiez-la ainsi que le mot de passe pour restaurer le compte sur un autre appareil :</string>
     <string name="action_export">Exporter</string>
     <string name="action_close">Fermer</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Paramètres</string>
     <string name="section_account">Compte</string>
-    <string name="label_no_username">Aucun nom d\'utilisateur enregistré</string>
+    <string name="label_no_nickname">Aucun pseudo défini</string>
+    <string name="content_desc_show_qr">Afficher mon ID Tox en QR code</string>
     <string name="export_account_item_title">Exporter le compte</string>
-    <string name="export_account_item_desc">Sauvegarde protégée par mot de passe des clés de votre ID Jami</string>
+    <string name="export_account_item_desc">Sauvegarde protégée par mot de passe des clés de votre ID Tox</string>
     <string name="section_network">Réseau</string>
-    <string name="upnp_title">UPnP</string>
-    <string name="upnp_desc">Redirection automatique des ports du routeur pour des connexions P2P directes</string>
-    <string name="turn_title">Relais TURN</string>
-    <string name="turn_desc">Relais de secours lorsque la connexion P2P directe échoue</string>
-    <string name="bootstrap_nodes_title">Nœuds d\'amorçage DHT</string>
-    <string name="bootstrap_nodes_desc">Points d\'entrée dans le réseau OpenDHT. Conservez au moins deux nœuds indépendants pour que l\'application survive à la panne de l\'un d\'eux.</string>
+    <string name="bootstrap_nodes_title">Nœuds d\'amorçage</string>
+    <string name="bootstrap_nodes_desc">Points d\'entrée dans le réseau Tox. Conservez au moins deux nœuds indépendants pour que l\'application survive à la panne de l\'un d\'eux.</string>
     <string name="content_desc_remove_node">Supprimer le nœud</string>
-    <string name="label_host_port">hôte:port</string>
+    <string name="label_host_port_pubkey">Hôte:Port:Clé publique</string>
+    <string name="bootstrap_node_invalid_format">Saisissez un nœud d\'amorçage au format hôte:port:clé-publique</string>
     <string name="content_desc_add_node">Ajouter un nœud</string>
     <string name="section_diagnostics">Diagnostic</string>
     <string name="export_logs_title">Exporter les journaux de diagnostic</string>
