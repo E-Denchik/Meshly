@@ -21,7 +21,9 @@
 package org.meshly.app.ui.contacts
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +53,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +64,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,13 +75,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.launch
 import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.AvatarSize
 import org.meshly.app.ui.components.EmptyState
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
 /** A Tox ID is a 76-char hex string (32-byte public key + 4-byte nospam + 2-byte checksum);
@@ -100,6 +108,9 @@ fun ContactListScreen(
 
     val errorInvalidFormat = stringResource(R.string.contact_search_error_invalid)
     val errorDuplicate = stringResource(R.string.contact_search_error_duplicate)
+    val offlineHint = stringResource(R.string.call_target_offline_hint)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         result.contents?.let { scanned ->
@@ -116,10 +127,11 @@ fun ContactListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.contacts_title)) }) }
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.contacts_title)) }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = searchQuery,
@@ -169,11 +181,11 @@ fun ContactListScreen(
                     onValueChange = { requestMessage = it },
                     label = { Text(stringResource(R.string.contact_request_message_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
                 )
             }
 
-            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
+            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = Spacing.lg) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0; searchError = null },
@@ -191,36 +203,42 @@ fun ContactListScreen(
                 )
             }
 
-            val visibleList = when (selectedTab) {
-                0 -> confirmed
-                1 -> requests
-                else -> blocked
-            }
-            if (visibleList.isEmpty()) {
-                EmptyState(
-                    icon = when (selectedTab) {
-                        0 -> Icons.Filled.People
-                        1 -> Icons.Filled.HourglassEmpty
-                        else -> Icons.Filled.Block
-                    },
-                    text = when (selectedTab) {
-                        0 -> stringResource(R.string.contacts_empty)
-                        1 -> stringResource(R.string.requests_empty)
-                        else -> stringResource(R.string.blocked_empty)
-                    }
-                )
-            } else {
-                LazyColumn {
-                    items(visibleList, key = { it.toxId }) { contact ->
-                        ContactRow(
-                            contact = contact,
-                            onAccept = { viewModel.acceptRequest(contact) },
-                            onRemove = { viewModel.removeContact(contact.toxId) },
-                            onBlock = { viewModel.blockContact(contact.toxId) },
-                            onUnblock = { viewModel.unblockContact(contact) },
-                            onOpenChat = { onOpenChat(contact.toxId, contact.displayName) },
-                            onCall = { callType -> onCall(contact.toxId, contact.displayName, callType) }
-                        )
+            Crossfade(targetState = selectedTab, label = "contact-tab") { tab ->
+                val tabList = when (tab) {
+                    0 -> confirmed
+                    1 -> requests
+                    else -> blocked
+                }
+                if (tabList.isEmpty()) {
+                    EmptyState(
+                        icon = when (tab) {
+                            0 -> Icons.Filled.People
+                            1 -> Icons.Filled.HourglassEmpty
+                            else -> Icons.Filled.Block
+                        },
+                        text = when (tab) {
+                            0 -> stringResource(R.string.contacts_empty)
+                            1 -> stringResource(R.string.requests_empty)
+                            else -> stringResource(R.string.blocked_empty)
+                        }
+                    )
+                } else {
+                    LazyColumn {
+                        items(tabList, key = { it.toxId }) { contact ->
+                            ContactRow(
+                                contact = contact,
+                                onAccept = { viewModel.acceptRequest(contact) },
+                                onRemove = { viewModel.removeContact(contact.toxId) },
+                                onBlock = { viewModel.blockContact(contact.toxId) },
+                                onUnblock = { viewModel.unblockContact(contact) },
+                                onOpenChat = { onOpenChat(contact.toxId, contact.displayName) },
+                                onCall = { callType -> onCall(contact.toxId, contact.displayName, callType) },
+                                onOfflineCallAttempt = {
+                                    coroutineScope.launch { snackbarHostState.showSnackbar(offlineHint) }
+                                },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
                     }
                 }
             }
@@ -236,21 +254,23 @@ private fun ContactRow(
     onBlock: () -> Unit,
     onUnblock: () -> Unit,
     onOpenChat: () -> Unit,
-    onCall: (CallType) -> Unit
+    onCall: (CallType) -> Unit,
+    onOfflineCallAttempt: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .let { if (contact.status == ContactStatus.CONFIRMED) it.clickable(onClick = onOpenChat) else it }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-            Avatar(name = contact.displayName, seed = contact.toxId, size = 40.dp)
-            Column(modifier = Modifier.padding(start = 12.dp)) {
+            Avatar(name = contact.displayName, seed = contact.toxId, size = AvatarSize.Small)
+            Column(modifier = Modifier.padding(start = Spacing.md)) {
                 Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
                 Text(
                     contact.toxId,
@@ -272,11 +292,37 @@ private fun ContactRow(
             }
             ContactStatus.CONFIRMED -> Row {
                 val isOnline = contact.presence == PresenceStatus.ONLINE
-                IconButton(onClick = { onCall(CallType.AUDIO) }, enabled = isOnline) {
-                    Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
+                Box {
+                    IconButton(onClick = { onCall(CallType.AUDIO) }, enabled = isOnline) {
+                        Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
+                    }
+                    if (!isOnline) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onOfflineCallAttempt
+                                )
+                        )
+                    }
                 }
-                IconButton(onClick = { onCall(CallType.VIDEO) }, enabled = isOnline) {
-                    Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
+                Box {
+                    IconButton(onClick = { onCall(CallType.VIDEO) }, enabled = isOnline) {
+                        Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
+                    }
+                    if (!isOnline) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onOfflineCallAttempt
+                                )
+                        )
+                    }
                 }
                 Box {
                     IconButton(onClick = { showMenu = true }) {

@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.meshly.app.R
@@ -49,7 +48,9 @@ import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.AvatarSize
 import org.meshly.app.ui.components.EmptyState
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
 @Composable
@@ -74,8 +75,10 @@ fun ChatsListScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(conversations, key = { it.toxId }) { contact ->
-                    ConversationRow(contact) { onOpenChat(contact.toxId, contact.displayName) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    Column(modifier = Modifier.animateItem()) {
+                        ConversationRow(contact) { onOpenChat(contact.toxId, contact.displayName) }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    }
                 }
             }
         }
@@ -88,16 +91,17 @@ private fun ConversationRow(contact: Contact, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Avatar(
             name = contact.displayName,
             seed = contact.toxId,
+            size = AvatarSize.Medium,
             showOnlineIndicator = contact.presence == PresenceStatus.ONLINE,
             onlineContentDescription = stringResource(R.string.content_desc_online)
         )
-        Column(modifier = Modifier.padding(start = 12.dp)) {
+        Column(modifier = Modifier.padding(start = Spacing.md)) {
             Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
             Text(
                 contact.toxId,

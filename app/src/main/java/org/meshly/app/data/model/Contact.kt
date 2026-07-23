@@ -33,10 +33,24 @@ enum class PresenceStatus {
     UNKNOWN
 }
 
+/**
+ * @property toxId For [ContactStatus.PENDING_INCOMING]/[ContactStatus.CONFIRMED]/
+ *   [ContactStatus.BLOCKED] contacts, the peer's 64-char hex public key (`TOX_PUBLIC_KEY_SIZE`,
+ *   32 bytes) -- the only identifier real Tox still has for an established friend. For
+ *   [ContactStatus.PENDING_OUTGOING] (added by us, not yet accepted), this is the full 76-char
+ *   hex address (`TOX_ADDRESS_SIZE`, 38 bytes: pubkey+nospam+checksum) originally entered/scanned,
+ *   since that's what `tox_friend_add` was actually called with.
+ * @property friendNumber The real `Tox_Friend_Number` (`uint32_t`) c-toxcore assigned via
+ *   `tox_friend_add`/`tox_friend_add_norequest`, needed for every friend-scoped native call
+ *   (send message, connection status, calls). Null only for [ContactStatus.PENDING_INCOMING]
+ *   (their request arrived via the `friend_request` callback but we haven't called
+ *   `tox_friend_add_norequest` yet, so c-toxcore doesn't have a friend-list entry for them).
+ */
 data class Contact(
     val toxId: String,
     val displayName: String,
     val status: ContactStatus = ContactStatus.CONFIRMED,
     val presence: PresenceStatus = PresenceStatus.UNKNOWN,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val friendNumber: Int? = null
 )

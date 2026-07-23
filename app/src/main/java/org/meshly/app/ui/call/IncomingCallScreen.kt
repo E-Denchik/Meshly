@@ -41,12 +41,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.meshly.app.R
 import org.meshly.app.data.model.CallType
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.AvatarSize
+import org.meshly.app.ui.theme.CallSurfaceColors
+import org.meshly.app.ui.theme.Spacing
 
 @Composable
 fun IncomingCallScreen(
@@ -61,10 +63,10 @@ fun IncomingCallScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFF121212))
+                .background(CallSurfaceColors.background)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
+                modifier = Modifier.fillMaxSize().padding(Spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -73,25 +75,25 @@ fun IncomingCallScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Avatar(name = peerDisplayName, seed = peerToxId, size = 128.dp)
-                    Spacer(Modifier.height(24.dp))
+                    Avatar(name = peerDisplayName, seed = peerToxId, size = AvatarSize.Large)
+                    Spacer(Modifier.height(Spacing.xl))
                     Text(
                         peerDisplayName,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White
+                        color = CallSurfaceColors.onSurface
                     )
                     Text(
                         stringResource(
                             if (callType == CallType.VIDEO) R.string.incoming_video_call else R.string.incoming_audio_call
                         ),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = CallSurfaceColors.onSurfaceMuted
                     )
                 }
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(64.dp),
-                    modifier = Modifier.padding(bottom = 32.dp)
+                    modifier = Modifier.padding(bottom = Spacing.xxl)
                 ) {
                     FilledIconButton(
                         onClick = onReject,

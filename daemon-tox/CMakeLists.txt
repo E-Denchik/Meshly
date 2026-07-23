@@ -3,6 +3,18 @@ project(toxcore-jni)
 
 set(TOXCORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../native/upstream/c-toxcore)
 
+# c-toxcore's cmake/Dependencies.cmake finds libsodium/opus/vpx via
+# find_package(PkgConfig REQUIRED) + pkg_search_module(...) (confirmed by reading that file).
+# Point pkg-config at this module's own cross-compiled deps/<ABI>/lib/pkgconfig staging tree
+# (built per PHASE2_BUILD_TOX.md's steps: libsodium via its own dist-build/android-*.sh,
+# opus/vpx via the NDK CMake/clang toolchain directly) instead of relying on the invoking
+# shell's environment -- set(ENV{...}) here makes this reproducible whether CMake is invoked
+# standalone or through Gradle's externalNativeBuild, which doesn't otherwise let you set
+# subprocess environment variables via cmake.arguments (only -D cache variables).
+set(ENV{PKG_CONFIG_LIBDIR} "${CMAKE_CURRENT_SOURCE_DIR}/deps/${ANDROID_ABI}/lib/pkgconfig")
+set(ENV{PKG_CONFIG_PATH} "")
+set(ENV{PKG_CONFIG_SYSROOT_DIR} "")
+
 # c-toxcore's own top-level CMakeLists.txt (TOXCORE_DIR/CMakeLists.txt) builds
 # ONE merged library containing toxcore + toxav + toxencryptsave together
 # (confirmed: c-toxcore/INSTALL.md's component table says "at the moment,
@@ -15,6 +27,14 @@ add_subdirectory(${TOXCORE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/c-toxcore)
 add_library(toxcore-jni SHARED
     src/main/cpp/tox_jni.c
 )
+
+# toxcore_static's own headers live at TOXCORE_DIR/{toxcore,toxav}/*.h (source-tree layout,
+# not an installed "tox/" prefix) -- tox_jni.c includes them as "toxcore/tox.h" and
+# "toxav/toxav.h", so TOXCORE_DIR itself must be on this target's include path. toxcore_static
+# does declare these as part of its own target_include_directories, but PRIVATE visibility
+# (confirmed: TOXCORE_DIR/CMakeLists.txt target_link_libraries(toxcore_static PRIVATE ...))
+# doesn't reliably propagate to consumers, so it's added explicitly here too.
+target_include_directories(toxcore-jni PRIVATE ${TOXCORE_DIR})
 
 find_library(log-lib log)
 

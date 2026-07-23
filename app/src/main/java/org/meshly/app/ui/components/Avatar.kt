@@ -40,6 +40,13 @@ import androidx.compose.ui.unit.sp
 import org.meshly.app.ui.theme.AvatarPalette
 import kotlin.math.abs
 
+/** Shared avatar size scale so call sites stop picking arbitrary one-off dp values. */
+object AvatarSize {
+    val Small = 40.dp
+    val Medium = 48.dp
+    val Large = 120.dp
+}
+
 /**
  * A circular initials avatar with a color deterministically derived from [seed] (typically the
  * contact's Tox ID) so the same person always renders the same color everywhere in the app,
@@ -50,7 +57,7 @@ fun Avatar(
     name: String,
     seed: String,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
+    size: Dp = AvatarSize.Medium,
     showOnlineIndicator: Boolean = false,
     onlineContentDescription: String? = null
 ) {

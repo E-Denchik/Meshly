@@ -29,24 +29,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.data.model.Contact
-import org.meshly.app.data.repository.ContactRepository
 
 class ContactViewModel(application: Application) : AndroidViewModel(application) {
-    private val contactRepository = ContactRepository(
-        (application as MeshlyApplication).database.contactDao()
-    )
+    // Shared app-lifetime instance - see MeshlyApplication's doc on why this must not be a
+    // fresh-per-screen instance (a screen-scoped subscription would silently miss friend
+    // requests/connection changes that arrive while this screen isn't the one on-screen).
+    private val contactRepository = (application as MeshlyApplication).contactRepository
 
     val contacts: StateFlow<List<Contact>> = contactRepository.allContacts.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
-
-    init {
-        viewModelScope.launch {
-            contactRepository.seedDemoIncomingRequestIfEmpty()
-        }
-    }
 
     fun addContactRequest(toxId: String, displayName: String, requestMessage: String? = null) {
         viewModelScope.launch {

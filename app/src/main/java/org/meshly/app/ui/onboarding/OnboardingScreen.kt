@@ -20,6 +20,12 @@
 
 package org.meshly.app.ui.onboarding
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.meshly.app.R
 import org.meshly.app.ui.components.QrCodeImage
 import org.meshly.app.ui.theme.MeshWordmarkStyle
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.OnboardingViewModel
 
 private enum class OnboardingStep {
@@ -86,39 +93,48 @@ fun OnboardingScreen(
     }
 
     Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            when (step) {
-                OnboardingStep.CHECKING -> CircularProgressIndicator()
-                OnboardingStep.WELCOME -> WelcomeStep(
-                    onCreateAccount = { step = OnboardingStep.CREATE_ACCOUNT },
-                    onImportAccount = { step = OnboardingStep.IMPORT_ACCOUNT }
-                )
-                OnboardingStep.CREATE_ACCOUNT -> CreateAccountStep(
-                    onCreate = { nickname ->
-                        viewModel.createAccount(nickname.ifBlank { null })
-                        step = OnboardingStep.SHOW_OWN_ID
-                    },
-                    onBack = { step = OnboardingStep.WELCOME }
-                )
-                OnboardingStep.SHOW_OWN_ID -> OwnIdStep(
-                    toxId = account?.toxId.orEmpty(),
-                    onContinue = onOnboardingComplete
-                )
-                OnboardingStep.IMPORT_ACCOUNT -> ImportAccountStep(
-                    onImport = { payload, password ->
-                        val success = viewModel.importAccount(payload, password)
-                        if (success) onOnboardingComplete()
-                        success
-                    },
-                    onBack = { step = OnboardingStep.WELCOME }
-                )
+        Box(modifier = Modifier.fillMaxSize().padding(padding).padding(Spacing.xl)) {
+            AnimatedContent(
+                targetState = step,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = {
+                    (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 12 }) togetherWith
+                        fadeOut(tween(150))
+                },
+                label = "onboarding-step"
+            ) { targetStep ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    when (targetStep) {
+                        OnboardingStep.CHECKING -> CircularProgressIndicator()
+                        OnboardingStep.WELCOME -> WelcomeStep(
+                            onCreateAccount = { step = OnboardingStep.CREATE_ACCOUNT },
+                            onImportAccount = { step = OnboardingStep.IMPORT_ACCOUNT }
+                        )
+                        OnboardingStep.CREATE_ACCOUNT -> CreateAccountStep(
+                            onCreate = { nickname ->
+                                viewModel.createAccount(nickname.ifBlank { null })
+                                step = OnboardingStep.SHOW_OWN_ID
+                            },
+                            onBack = { step = OnboardingStep.WELCOME }
+                        )
+                        OnboardingStep.SHOW_OWN_ID -> OwnIdStep(
+                            toxId = account?.toxId.orEmpty(),
+                            onContinue = onOnboardingComplete
+                        )
+                        OnboardingStep.IMPORT_ACCOUNT -> ImportAccountStep(
+                            onImport = { payload, password ->
+                                val success = viewModel.importAccount(payload, password)
+                                if (success) onOnboardingComplete()
+                                success
+                            },
+                            onBack = { step = OnboardingStep.WELCOME }
+                        )
+                    }
+                }
             }
         }
     }
@@ -144,18 +160,18 @@ private fun WelcomeStep(onCreateAccount: () -> Unit, onImportAccount: () -> Unit
         "Meshly",
         style = MeshWordmarkStyle,
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = 20.dp)
+        modifier = Modifier.padding(top = Spacing.xl)
     )
     Text(
         stringResource(R.string.onboarding_tagline),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp, bottom = 36.dp)
+        modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xxl)
     )
     Button(onClick = onCreateAccount, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.action_create_new_id))
     }
-    TextButton(onClick = onImportAccount, modifier = Modifier.padding(top = 8.dp)) {
+    TextButton(onClick = onImportAccount, modifier = Modifier.padding(top = Spacing.sm)) {
         Text(stringResource(R.string.action_import_existing))
     }
 }
@@ -167,7 +183,7 @@ private fun CreateAccountStep(onCreate: (String) -> Unit, onBack: () -> Unit) {
     Text(
         stringResource(R.string.choose_nickname_desc),
         style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(vertical = 12.dp)
+        modifier = Modifier.padding(vertical = Spacing.md)
     )
     OutlinedTextField(
         value = nickname,
@@ -177,11 +193,11 @@ private fun CreateAccountStep(onCreate: (String) -> Unit, onBack: () -> Unit) {
     )
     Button(
         onClick = { onCreate(nickname) },
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.lg)
     ) {
         Text(stringResource(R.string.action_generate_id))
     }
-    TextButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) {
+    TextButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.xs)) {
         Text(stringResource(R.string.action_back))
     }
 }
@@ -190,14 +206,14 @@ private fun CreateAccountStep(onCreate: (String) -> Unit, onBack: () -> Unit) {
 private fun OwnIdStep(toxId: String, onContinue: () -> Unit) {
     Text(stringResource(R.string.own_tox_id_qr_title), style = MaterialTheme.typography.titleMedium)
     if (toxId.isNotBlank()) {
-        QrCodeImage(content = toxId, modifier = Modifier.padding(vertical = 16.dp))
+        QrCodeImage(content = toxId, modifier = Modifier.padding(vertical = Spacing.lg))
     }
     SelectionContainer {
         Text(
             toxId,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = Spacing.xl)
         )
     }
     Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
@@ -215,7 +231,7 @@ private fun ImportAccountStep(onImport: (payload: String, password: String) -> B
     Text(
         stringResource(R.string.import_account_desc),
         style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(vertical = 12.dp)
+        modifier = Modifier.padding(vertical = Spacing.md)
     )
     OutlinedTextField(
         value = archivePayload,
@@ -228,23 +244,23 @@ private fun ImportAccountStep(onImport: (payload: String, password: String) -> B
         onValueChange = { password = it; importFailed = false },
         label = { Text(stringResource(R.string.label_password)) },
         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
     )
     if (importFailed) {
         Text(
             stringResource(R.string.import_failed),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = Modifier.padding(top = Spacing.sm)
         )
     }
     Button(
         onClick = { importFailed = !onImport(archivePayload, password) },
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.lg)
     ) {
         Text(stringResource(R.string.action_import))
     }
-    OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) {
+    OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.xs)) {
         Text(stringResource(R.string.action_back))
     }
 }

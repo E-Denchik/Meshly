@@ -34,7 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
@@ -60,7 +60,7 @@ private fun MainTab.label(): String = when (this) {
 
 @Composable
 fun MainScreen(navController: NavHostController) {
-    var selectedTab by remember { mutableStateOf(MainTab.CHATS) }
+    var selectedTab by rememberSaveable { mutableStateOf(MainTab.CHATS) }
 
     Scaffold(
         bottomBar = {

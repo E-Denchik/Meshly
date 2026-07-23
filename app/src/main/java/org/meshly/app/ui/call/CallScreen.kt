@@ -20,6 +20,10 @@
 
 package org.meshly.app.ui.call
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +53,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +63,9 @@ import org.meshly.app.R
 import org.meshly.app.data.model.CallState
 import org.meshly.app.data.model.CallType
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.AvatarSize
+import org.meshly.app.ui.theme.CallSurfaceColors
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.CallViewModel
 
 @Composable
@@ -99,10 +105,10 @@ fun CallScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFF121212))
+                .background(CallSurfaceColors.background)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
+                modifier = Modifier.fillMaxSize().padding(Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -113,33 +119,42 @@ fun CallScreen(
                 ) {
                     val showsVideoPlaceholder = callType == CallType.VIDEO && session?.isCameraOn == true
                     if (!showsVideoPlaceholder) {
-                        Avatar(name = peerDisplayName, seed = peerToxId, size = 120.dp)
-                        Spacer(Modifier.height(24.dp))
+                        Avatar(name = peerDisplayName, seed = peerToxId, size = AvatarSize.Large)
+                        Spacer(Modifier.height(Spacing.xl))
                     }
 
                     Text(
                         peerDisplayName,
                         style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White
+                        color = CallSurfaceColors.onSurface
                     )
-                    Text(
-                        callStateLabel(session?.state),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
+                    AnimatedContent(
+                        targetState = session?.state,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "call-state-label"
+                    ) { state ->
+                        Text(
+                            callStateLabel(state),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CallSurfaceColors.onSurfaceMuted
+                        )
+                    }
 
                     if (showsVideoPlaceholder) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.lg),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.video_preview_placeholder), color = Color.White.copy(alpha = 0.5f))
+                            Text(
+                                stringResource(R.string.video_preview_placeholder),
+                                color = CallSurfaceColors.onSurfaceFaint
+                            )
                         }
                     }
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xl),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     FilledTonalIconButton(onClick = { viewModel.toggleMute() }) {

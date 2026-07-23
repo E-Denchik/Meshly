@@ -70,6 +70,26 @@ android {
         ndk {
             abiFilters.add("arm64-v8a")
         }
+
+        externalNativeBuild {
+            cmake {
+                // BUILD_TOXAV/MUST_BUILD_TOXAV: fail loudly (not silently fall back to
+                // core-only) if opus/vpx don't resolve, per c-toxcore's CMakeLists.txt
+                // logic (confirmed: MUST_BUILD_TOXAV forces BUILD_TOXAV and turns a missing
+                // dependency into a hard error instead of a warning).
+                arguments(
+                    "-DANDROID_PLATFORM=android-24",
+                    "-DBUILD_TOXAV=ON",
+                    "-DMUST_BUILD_TOXAV=ON",
+                    "-DENABLE_SHARED=OFF",
+                    "-DENABLE_STATIC=ON",
+                    "-DBUILD_TESTING=OFF",
+                    "-DBOOTSTRAP_DAEMON=OFF",
+                    "-DDHT_BOOTSTRAP=OFF",
+                    "-DAUTOTEST=OFF"
+                )
+            }
+        }
     }
 
     externalNativeBuild {

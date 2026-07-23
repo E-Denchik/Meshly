@@ -30,13 +30,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.data.model.ChatMessage
-import org.meshly.app.data.repository.ChatRepository
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
-    private val chatRepository = ChatRepository(
-        (application as MeshlyApplication).database.chatMessageDao(),
-        application.database.contactDao()
-    )
+    // Shared app-lifetime instance - see MeshlyApplication's doc on why this must not be a
+    // fresh-per-screen instance (a screen-scoped subscription would silently miss messages
+    // that arrive while this screen isn't the one on-screen).
+    private val chatRepository = (application as MeshlyApplication).chatRepository
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()

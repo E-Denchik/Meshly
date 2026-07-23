@@ -25,6 +25,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+/**
+ * The in-call surface (audio/video call + incoming-call screens) is intentionally always dark,
+ * regardless of the app's light/dark setting - a common dialer-app pattern that keeps a video
+ * feed from fighting with a light background. Centralized here as named tokens instead of raw
+ * hex literals duplicated per screen.
+ */
+object CallSurfaceColors {
+    val background = Color(0xFF121212)
+    val onSurface = Color.White
+    val onSurfaceMuted = Color.White.copy(alpha = 0.7f)
+    val onSurfaceFaint = Color.White.copy(alpha = 0.5f)
+}
 
 private val MeshDarkColorScheme = darkColorScheme(
     primary = MeshPrimaryDark,

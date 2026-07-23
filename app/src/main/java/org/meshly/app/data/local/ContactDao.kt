@@ -37,6 +37,9 @@ interface ContactDao {
     @Query("SELECT * FROM contacts WHERE toxId = :toxId LIMIT 1")
     suspend fun getContactById(toxId: String): ContactEntity?
 
+    @Query("SELECT * FROM contacts WHERE friendNumber = :friendNumber LIMIT 1")
+    suspend fun getContactByFriendNumber(friendNumber: Int): ContactEntity?
+
     @Query("SELECT COUNT(*) FROM contacts")
     suspend fun countContacts(): Int
 
@@ -48,6 +51,9 @@ interface ContactDao {
 
     @Query("UPDATE contacts SET presence = :presence WHERE toxId = :toxId")
     suspend fun updatePresence(toxId: String, presence: String)
+
+    @Query("UPDATE contacts SET friendNumber = :friendNumber WHERE toxId = :toxId")
+    suspend fun updateFriendNumber(toxId: String, friendNumber: Int)
 
     @Query("DELETE FROM contacts WHERE toxId = :toxId")
     suspend fun deleteContact(toxId: String)

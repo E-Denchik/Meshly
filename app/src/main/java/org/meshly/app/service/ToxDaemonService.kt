@@ -28,29 +28,47 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.R
-import org.meshly.app.core.ToxBridge
-import org.meshly.app.core.ToxEvent
+import org.meshly.app.daemontox.ToxBridge
+import org.meshly.app.daemontox.ToxDaemonEvent
 import org.meshly.app.data.model.CallType
-import org.meshly.app.data.model.ChatMessage
+import org.meshly.app.data.repository.ToxSavedataStore
 import org.meshly.app.ui.MainActivity
 import org.meshly.app.ui.call.IncomingCallActivity
+import java.util.concurrent.Executors
+import kotlin.math.min
 
 class ToxDaemonService : Service() {
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob)
 
+    /**
+     * A dedicated single thread, not a shared pool - [ToxBridge.iterate]/[ToxBridge.avIterate]
+     * MUST always run on the same OS thread (see `tox_jni.c`'s top-of-file doc on the shared-
+     * JNIEnv callback dispatch design); `Dispatchers.IO`/`Default` hop across pooled threads
+     * between suspension points, which would silently break that contract.
+     */
+    private val toxThread = Executors.newSingleThreadExecutor { r -> Thread(r, "tox-iterate") }
+    private val toxDispatcher = toxThread.asCoroutineDispatcher()
+
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, createNotification())
-        ToxBridge.getInstance().startDaemon()
+        // ToxBridge.startDaemon()/startAv() already ran in MeshlyApplication.onCreate - this
+        // service only owns driving the iterate loop and turning events into notifications.
+        startIterateLoop()
         observeIncomingCalls()
         observeIncomingMessages()
     }
@@ -64,32 +82,59 @@ class ToxDaemonService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
+        toxThread.shutdown()
+    }
+
+    /** Drives `tox_iterate`/`toxav_iterate` repeatedly, sleeping the shorter of the two
+     *  requested intervals between steps, and periodically persists savedata so friend-list/
+     *  connection-state changes survive a restart even without an explicit user action. */
+    private fun startIterateLoop() {
+        serviceScope.launch(toxDispatcher) {
+            var sincePersist = 0L
+            while (isActive) {
+                ToxBridge.iterate()
+                if (ToxBridge.avHandle != null) {
+                    ToxBridge.avIterate()
+                }
+                val interval = min(ToxBridge.iterationIntervalMs(), ToxBridge.avIterationIntervalMs().takeIf { ToxBridge.avHandle != null } ?: Int.MAX_VALUE)
+                delay(interval.toLong().coerceAtLeast(1))
+                sincePersist += interval
+                if (sincePersist >= SAVEDATA_PERSIST_INTERVAL_MS) {
+                    sincePersist = 0
+                    ToxSavedataStore.persistNow(applicationContext)
+                }
+            }
+        }
     }
 
     private fun observeIncomingCalls() {
-        ToxBridge.getInstance().events
-            .filterIsInstance<ToxEvent.IncomingCall>()
+        ToxBridge.events
+            .filterIsInstance<ToxDaemonEvent.CallInviteReceived>()
             .onEach { event -> showIncomingCallFullScreenIntent(event) }
             .launchIn(serviceScope)
     }
 
-    private fun showIncomingCallFullScreenIntent(event: ToxEvent.IncomingCall) {
-        val session = event.session
+    private suspend fun showIncomingCallFullScreenIntent(event: ToxDaemonEvent.CallInviteReceived) {
+        val contactDao = (applicationContext as MeshlyApplication).database.contactDao()
+        val contact = contactDao.getContactByFriendNumber(event.friendNumber) ?: return
+        val callId = event.friendNumber.toString()
+        val callType = if (event.videoEnabled) CallType.VIDEO else CallType.AUDIO
+
         val fullScreenIntent = Intent(this, IncomingCallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(IncomingCallActivity.EXTRA_TOX_ID, session.peerToxId)
-            putExtra(IncomingCallActivity.EXTRA_DISPLAY_NAME, session.peerDisplayName)
-            putExtra(IncomingCallActivity.EXTRA_CALL_ID, session.callId)
-            putExtra(IncomingCallActivity.EXTRA_CALL_TYPE, session.callType.name)
+            putExtra(IncomingCallActivity.EXTRA_TOX_ID, contact.toxId)
+            putExtra(IncomingCallActivity.EXTRA_DISPLAY_NAME, contact.displayName)
+            putExtra(IncomingCallActivity.EXTRA_CALL_ID, callId)
+            putExtra(IncomingCallActivity.EXTRA_CALL_TYPE, callType.name)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
-            session.callId.hashCode(),
+            callId.hashCode(),
             fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val titleRes = if (session.callType == CallType.VIDEO) {
+        val titleRes = if (callType == CallType.VIDEO) {
             R.string.notification_incoming_video_call
         } else {
             R.string.notification_incoming_audio_call
@@ -97,7 +142,7 @@ class ToxDaemonService : Service() {
 
         val notification = NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_CALL_ID)
             .setContentTitle(getString(titleRes))
-            .setContentText(session.peerDisplayName)
+            .setContentText(contact.displayName)
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -106,39 +151,39 @@ class ToxDaemonService : Service() {
             .setAutoCancel(true)
             .build()
 
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(session.callId.hashCode(), notification)
+        getSystemService(NotificationManager::class.java).notify(callId.hashCode(), notification)
     }
 
     /** Posts a heads-up notification for an incoming direct message (FR-5.1), no FCM involved -
      *  the event arrives straight from [ToxBridge]'s own event flow. Tapping it deep-links into
      *  that conversation via [MainActivity]'s deep-link extras. */
     private fun observeIncomingMessages() {
-        ToxBridge.getInstance().events
-            .filterIsInstance<ToxEvent.MessageReceived>()
-            .onEach { event -> showMessageNotification(event.message) }
+        ToxBridge.events
+            .filterIsInstance<ToxDaemonEvent.FriendMessageReceived>()
+            .onEach { event -> showMessageNotification(event) }
             .launchIn(serviceScope)
     }
 
-    private suspend fun showMessageNotification(message: ChatMessage) {
+    private suspend fun showMessageNotification(event: ToxDaemonEvent.FriendMessageReceived) {
         val contactDao = (applicationContext as MeshlyApplication).database.contactDao()
-        val displayName = contactDao.getContactById(message.senderToxId)?.displayName ?: message.senderToxId
+        val contact = contactDao.getContactByFriendNumber(event.friendNumber) ?: return
+        val text = runCatching { String(event.message, Charsets.UTF_8) }.getOrDefault("")
 
         val contentIntent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra(MainActivity.EXTRA_DEEPLINK_TOX_ID, message.senderToxId)
-            putExtra(MainActivity.EXTRA_DEEPLINK_DISPLAY_NAME, displayName)
+            putExtra(MainActivity.EXTRA_DEEPLINK_TOX_ID, contact.toxId)
+            putExtra(MainActivity.EXTRA_DEEPLINK_DISPLAY_NAME, contact.displayName)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            message.senderToxId.hashCode(),
+            contact.toxId.hashCode(),
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, MeshlyApplication.CHANNEL_MESSAGE_ID)
-            .setContentTitle(displayName)
-            .setContentText(message.text.ifBlank { getString(R.string.notification_message_attachment_fallback) })
+            .setContentTitle(contact.displayName)
+            .setContentText(text.ifBlank { getString(R.string.notification_message_attachment_fallback) })
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -146,7 +191,7 @@ class ToxDaemonService : Service() {
             .setContentIntent(pendingIntent)
             .build()
 
-        getSystemService(NotificationManager::class.java).notify(message.senderToxId.hashCode(), notification)
+        getSystemService(NotificationManager::class.java).notify(contact.toxId.hashCode(), notification)
     }
 
     private fun createNotification(): Notification {
@@ -169,5 +214,6 @@ class ToxDaemonService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1001
+        private const val SAVEDATA_PERSIST_INTERVAL_MS = 30_000L
     }
 }

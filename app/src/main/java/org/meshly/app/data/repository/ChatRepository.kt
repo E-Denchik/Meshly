@@ -27,25 +27,30 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import org.meshly.app.core.ToxBridge
-import org.meshly.app.core.ToxEvent
+import org.meshly.app.daemontox.ToxBridge
+import org.meshly.app.daemontox.ToxDaemonEvent
 import org.meshly.app.data.local.ChatMessageDao
 import org.meshly.app.data.local.ChatMessageEntity
 import org.meshly.app.data.local.ContactDao
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
 import org.meshly.app.data.model.PresenceStatus
-import java.util.UUID
 
+/**
+ * Real c-toxcore-backed chat repository. c-toxcore identifies a message by a small
+ * `Tox_Friend_Message_Id` (`uint32_t`) scoped per-friend, not a UUID - this repository composes
+ * Room's own `id` column as `"<friendNumber>:<nativeMessageId>"` so a later
+ * [ToxDaemonEvent.FriendReadReceipt] (which only carries `friendNumber`/`messageId`, both raw
+ * ints) can be matched back to the right row without a separate in-memory correlation table.
+ */
 class ChatRepository(
     private val chatMessageDao: ChatMessageDao,
-    private val contactDao: ContactDao,
-    private val toxBridge: ToxBridge = ToxBridge.getInstance()
+    private val contactDao: ContactDao
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        toxBridge.events
+        ToxBridge.events
             .onEach { event -> handleEvent(event) }
             .launchIn(repositoryScope)
     }
@@ -56,47 +61,68 @@ class ChatRepository(
         }
     }
 
-    private suspend fun handleEvent(event: ToxEvent) {
+    private suspend fun handleEvent(event: ToxDaemonEvent) {
         when (event) {
-            is ToxEvent.MessageReceived -> receiveMessage(event.message)
-            is ToxEvent.MessageStateChanged -> {
-                chatMessageDao.updateMessageStatus(event.messageId, event.status.name)
+            is ToxDaemonEvent.FriendMessageReceived -> {
+                val entity = contactDao.getContactByFriendNumber(event.friendNumber) ?: return
+                val text = runCatching { String(event.message, Charsets.UTF_8) }.getOrDefault("")
+                val message = ChatMessage(
+                    id = "${event.friendNumber}:incoming:${System.nanoTime()}",
+                    conversationId = entity.toxId,
+                    senderToxId = entity.toxId,
+                    text = text,
+                    status = MessageStatus.DELIVERED,
+                    isIncoming = true
+                )
+                chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(message))
+            }
+            is ToxDaemonEvent.FriendReadReceipt -> {
+                chatMessageDao.updateMessageStatus(
+                    "${event.friendNumber}:${event.messageId}",
+                    MessageStatus.DELIVERED.name
+                )
             }
             else -> Unit
         }
     }
 
     /**
-     * Sends a text message. Plain Tox has no offline/store-and-forward delivery, so unlike
-     * Jami's DHT-queued sends, this checks the peer's currently known presence first: if they're
-     * not ONLINE right now, the message is marked FAILED immediately instead of optimistically
-     * going through a SENDING -> SENT hand-off that could never actually be delivered.
+     * Sends a text message. Plain Tox has no offline/store-and-forward delivery, so unlike a
+     * DHT-queued send, this checks the peer's currently known presence first: if they're not
+     * ONLINE right now, the message is marked FAILED immediately rather than being handed to
+     * `tox_friend_send_message`, which would itself reject it
+     * (`TOX_ERR_FRIEND_SEND_MESSAGE_FRIEND_NOT_CONNECTED`) anyway.
      */
     suspend fun sendMessage(conversationId: String, text: String, attachmentPath: String? = null): ChatMessage {
-        val pendingId = UUID.randomUUID().toString()
-        val peerOnline = contactDao.getContactById(conversationId)?.presence == PresenceStatus.ONLINE.name
+        val contact = contactDao.getContactById(conversationId)
+        val friendNumber = contact?.friendNumber
+        val peerOnline = contact?.presence == PresenceStatus.ONLINE.name
 
-        val pendingMessage = ChatMessage(
-            id = pendingId,
+        if (friendNumber == null || !peerOnline) {
+            val failed = ChatMessage(
+                id = "local:${System.nanoTime()}",
+                conversationId = conversationId,
+                senderToxId = "local_me",
+                text = text,
+                status = MessageStatus.FAILED,
+                attachmentPath = attachmentPath,
+                isIncoming = false
+            )
+            chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(failed))
+            return failed
+        }
+
+        val nativeMessageId = ToxBridge.sendMessage(friendNumber, text)
+        val sent = ChatMessage(
+            id = "$friendNumber:$nativeMessageId",
             conversationId = conversationId,
             senderToxId = "local_me",
             text = text,
-            status = if (peerOnline) MessageStatus.SENDING else MessageStatus.FAILED,
+            status = MessageStatus.SENT,
             attachmentPath = attachmentPath,
             isIncoming = false
         )
-        chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(pendingMessage))
-
-        if (!peerOnline) {
-            return pendingMessage
-        }
-
-        toxBridge.sendTextMessage(pendingId, conversationId, text, attachmentPath)
-        chatMessageDao.updateMessageStatus(pendingId, MessageStatus.SENT.name)
-        return pendingMessage.copy(status = MessageStatus.SENT)
-    }
-
-    suspend fun receiveMessage(message: ChatMessage) {
-        chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(message))
+        chatMessageDao.insertMessage(ChatMessageEntity.fromDomain(sent))
+        return sent
     }
 }

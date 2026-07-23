@@ -1,0 +1,16 @@
+# Opus codec reference implementation pkg-config file
+
+prefix=/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a
+exec_prefix=/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a
+libdir=/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/lib
+includedir=/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/include
+
+Name: Opus
+Description: Opus IETF audio codec ( build)
+URL: https://opus-codec.org/
+Version: 0
+Requires:
+Conflicts:
+Libs: -L/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/lib -lopus
+Libs.private: -lm
+Cflags: -I/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/include/opus

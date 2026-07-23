@@ -32,7 +32,8 @@ data class ContactEntity(
     val displayName: String,
     val status: String,
     val presence: String,
-    val addedAt: Long
+    val addedAt: Long,
+    val friendNumber: Int? = null
 ) {
     fun toDomain(): Contact {
         return Contact(
@@ -40,7 +41,8 @@ data class ContactEntity(
             displayName = displayName,
             status = try { ContactStatus.valueOf(status) } catch (e: Exception) { ContactStatus.CONFIRMED },
             presence = try { PresenceStatus.valueOf(presence) } catch (e: Exception) { PresenceStatus.UNKNOWN },
-            addedAt = addedAt
+            addedAt = addedAt,
+            friendNumber = friendNumber
         )
     }
 
@@ -51,7 +53,8 @@ data class ContactEntity(
                 displayName = contact.displayName,
                 status = contact.status.name,
                 presence = contact.presence.name,
-                addedAt = contact.addedAt
+                addedAt = contact.addedAt,
+                friendNumber = contact.friendNumber
             )
         }
     }

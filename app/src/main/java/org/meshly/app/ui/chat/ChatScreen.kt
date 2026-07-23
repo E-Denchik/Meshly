@@ -24,6 +24,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +73,7 @@ import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
 import org.meshly.app.data.model.PresenceStatus
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.ChatViewModel
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
@@ -133,10 +135,10 @@ fun ChatScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 pendingAttachment?.let { uri ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, modifier = Modifier.padding(end = Spacing.sm))
                         Text(
                             uri.lastPathSegment ?: stringResource(R.string.attachment_fallback_name),
                             style = MaterialTheme.typography.bodySmall,
@@ -148,7 +150,7 @@ fun ChatScreen(
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { filePicker.launch("*/*") }) {
@@ -176,23 +178,23 @@ fun ChatScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (peerPresence != PresenceStatus.ONLINE) {
-                Surface(color = MaterialTheme.colorScheme.errorContainer) {
+            AnimatedVisibility(visible = peerPresence != PresenceStatus.ONLINE) {
+                Surface(color = MaterialTheme.colorScheme.tertiaryContainer) {
                     Text(
                         stringResource(R.string.chat_peer_offline_banner),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)
                     )
                 }
             }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().weight(1f),
                 reverseLayout = true,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 items(messages.asReversed(), key = { it.id }) { message ->
-                    MessageBubble(message)
+                    MessageBubble(message, modifier = Modifier.animateItem())
                 }
             }
         }
@@ -200,29 +202,48 @@ fun ChatScreen(
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage) {
+private fun MessageBubble(message: ChatMessage, modifier: Modifier = Modifier) {
     val bubbleColor = if (message.isIncoming) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
         MaterialTheme.colorScheme.primaryContainer
     }
+    // A small "tail" corner (near the sender's edge) uses a tighter radius than the other three,
+    // giving the bubble a directional point instead of a uniformly-rounded rectangle.
+    val tail = MaterialTheme.shapes.extraSmall
+    val round = MaterialTheme.shapes.medium
+    val bubbleShape = if (message.isIncoming) {
+        RoundedCornerShape(
+            topStart = round.topStart,
+            topEnd = round.topEnd,
+            bottomEnd = round.bottomEnd,
+            bottomStart = tail.bottomStart
+        )
+    } else {
+        RoundedCornerShape(
+            topStart = round.topStart,
+            topEnd = round.topEnd,
+            bottomEnd = tail.bottomEnd,
+            bottomStart = round.bottomStart
+        )
+    }
 
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp)) {
+    Box(modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.sm, vertical = 2.dp)) {
         Column(
             modifier = Modifier
                 .align(if (message.isIncoming) Alignment.CenterStart else Alignment.CenterEnd)
         ) {
             Surface(
                 color = bubbleColor,
-                shape = RoundedCornerShape(12.dp)
+                shape = bubbleShape
             ) {
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Column(modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)) {
                     message.attachmentPath?.let { path ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.AutoMirrored.Filled.InsertDriveFile,
                                 contentDescription = stringResource(R.string.content_desc_attachment),
-                                modifier = Modifier.padding(end = 6.dp)
+                                modifier = Modifier.padding(end = Spacing.xs + 2.dp)
                             )
                             Text(
                                 Uri.parse(path).lastPathSegment ?: stringResource(R.string.attachment_fallback_name),
@@ -243,7 +264,7 @@ private fun MessageBubble(message: ChatMessage) {
                     Icon(
                         imageVector = message.status.toIcon(),
                         contentDescription = stringResource(message.status.toLabelRes()),
-                        modifier = Modifier.padding(end = 4.dp),
+                        modifier = Modifier.padding(end = Spacing.xs),
                         tint = if (message.status == MessageStatus.FAILED) {
                             MaterialTheme.colorScheme.error
                         } else {

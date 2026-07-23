@@ -24,17 +24,48 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import org.meshly.app.core.ToxBridge
+import org.meshly.app.daemontox.ToxBridge
 import org.meshly.app.data.local.AppDatabase
+import org.meshly.app.data.repository.ChatRepository
+import org.meshly.app.data.repository.ContactRepository
+import org.meshly.app.data.repository.ToxSavedataStore
 
 class MeshlyApplication : Application() {
 
     val database by lazy { AppDatabase.getInstance(this) }
 
+    /**
+     * App-process-lifetime singletons, not per-screen instances. [ChatRepository]/
+     * [ContactRepository] each subscribe to [ToxBridge.events] in their `init` block to persist
+     * incoming messages/friend requests - that subscription has to exist for as long as the
+     * daemon can receive events, not just while the matching screen happens to be on-screen.
+     * Constructing a fresh repository per-ViewModel (the original shape here) meant an incoming
+     * message or friend request arriving while the user was on some other screen was emitted to
+     * a `MutableSharedFlow` with zero subscribers and silently lost forever - verified live: a
+     * real message showed delivered+read on the sender's side (that ack is automatic at the Tox
+     * core level, independent of the app) but never appeared in the recipient's chat history
+     * because no [ChatRepository] instance was alive to store it. Held here instead so both
+     * ViewModels share the one instance created at first access and kept alive by the
+     * Application object itself.
+     */
+    val chatRepository by lazy { ChatRepository(database.chatMessageDao(), database.contactDao()) }
+    val contactRepository by lazy { ContactRepository(this, database.contactDao()) }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        ToxBridge.getInstance().startDaemon()
+        // Starts the real Tox instance immediately at process start, restoring persisted
+        // savedata if any exists (a returning user) or letting tox_new generate a fresh identity
+        // in-place (a first run) - see AccountRepository's top-of-file doc for why this ordering
+        // makes hasAccount()/loadOrInitAccount()/createAccount() all work correctly regardless of
+        // which one runs first. The actual tox_iterate/toxav_iterate loop is driven by
+        // ToxDaemonService, not here - this only creates the instance.
+        ToxBridge.startDaemon(ToxSavedataStore.load(this))
+        ToxBridge.startAv()
+        // Force these to construct now, not on first ViewModel access - see their doc above on
+        // why an event arriving before the subscription exists is lost, not just delayed.
+        chatRepository
+        contactRepository
     }
 
     private fun createNotificationChannels() {

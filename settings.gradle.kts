@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Meshly"
 include(":app")
+include(":daemon-tox")

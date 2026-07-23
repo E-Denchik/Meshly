@@ -18,8 +18,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Restricted to arm64-v8a to match :daemon-tox's current single-ABI native build
+        // (see daemon-tox/build.gradle.kts) now that :app actually depends on it -- real
+        // physical devices used for testing are arm64-v8a; other ABIs can be added back once
+        // the native deps (daemon-tox/deps/) are cross-compiled for them too.
         ndk {
-            abiFilters.addAll(setOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+            abiFilters.add("arm64-v8a")
         }
     }
 
@@ -52,6 +56,9 @@ android {
 }
 
 dependencies {
+    // Real c-toxcore/ToxAV engine (replaces the core.ToxBridge mock at the repository layer).
+    implementation(project(":daemon-tox"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
