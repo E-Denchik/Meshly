@@ -134,13 +134,13 @@ class CallRepository(context: Context, private val contactDao: ContactDao) {
                     bitmask and (STATE_ERROR or STATE_FINISHED) != 0 -> {
                         // A peer-initiated hangup/error reaches us only through this bitmask, not
                         // through hangUpCall() - so this is the one place that must independently
-                        // tear everything down (audio, the ongoing-call notification, and the
-                        // screen). Transitioning through ENDED rather than straight to null lets
-                        // CallScreen's own state-change effect notice and navigate away; going
-                        // straight to null (the previous behavior) left the screen frozen forever
-                        // since nothing was ever watching for "session disappeared".
+                        // tear everything down (audio and the screen; CallService stops itself -
+                        // see its own doc for why nothing here calls it directly). Transitioning
+                        // through ENDED rather than straight to null lets CallScreen's own
+                        // state-change effect notice and navigate away; going straight to null
+                        // (the previous behavior) left the screen frozen forever since nothing was
+                        // ever watching for "session disappeared".
                         audioEngine.stop()
-                        stopCallService()
                         stopBitRateRecovery()
                         _activeCall.value = current.copy(state = CallState.ENDED)
                     }
@@ -224,7 +224,6 @@ class CallRepository(context: Context, private val contactDao: ContactDao) {
             runCatching { ToxBridge.callControl(friendNumber, CONTROL_CANCEL) }
         }
         audioEngine.stop()
-        stopCallService()
         stopBitRateRecovery()
         // Same ENDED-not-null reasoning as the remote-hangup branch above: whatever screen is
         // showing this call (CallScreen or IncomingCallScreen) reacts to the state change itself,
@@ -281,19 +280,17 @@ class CallRepository(context: Context, private val contactDao: ContactDao) {
     /** Started at both call-initiation points (placing a call, accepting one) so the persistent
      *  "ongoing call" notification appears immediately - not gated on [CallState.CONNECTED],
      *  since a dialing/ringing call is already something the OS should let the user get back to.
-     *  Stopped from every path that can end a call ([hangUpCall] and the remote
-     *  ERROR/FINISHED branch of [handleEvent]) so it can never outlive the call, regardless of
-     *  which side ended it. */
+     *  Deliberately has no matching `stopCallService()` call anywhere - [CallService] watches
+     *  [activeCall] itself and stops itself once the call ends (see its own doc): a call can end
+     *  (e.g. the peer is instantly busy) faster than `startForegroundService()`'s `onStartCommand()`
+     *  gets scheduled, and calling `Context.stopService()` from here raced that, crashing the app
+     *  with `ForegroundServiceDidNotStartInTimeException` - confirmed live on a real device. */
     private fun startCallService(session: CallSession) {
         val intent = Intent(appContext, CallService::class.java).apply {
             putExtra(CallService.EXTRA_PEER_NAME, session.peerDisplayName)
             putExtra(CallService.EXTRA_CALL_TYPE, session.callType.name)
         }
         appContext.startForegroundService(intent)
-    }
-
-    private fun stopCallService() {
-        appContext.stopService(Intent(appContext, CallService::class.java))
     }
 
     fun toggleMute(): Boolean {
