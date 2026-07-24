@@ -101,7 +101,16 @@ class ToxDaemonService : Service() {
                 sincePersist += interval
                 if (sincePersist >= SAVEDATA_PERSIST_INTERVAL_MS) {
                     sincePersist = 0
-                    ToxSavedataStore.persistNow(applicationContext)
+                    // Not called inline: tox_get_savedata (mutex-protected in c-toxcore, see
+                    // tox.c - safe to call off this thread) plus the Base64 encode and
+                    // SharedPreferences write this triggers took long enough in practice to
+                    // stall this loop for multiple seconds every 30s - which starves
+                    // toxav_iterate() of CPU time and was the actual cause of periodic
+                    // AudioTrack underruns and multi-second video-frame gaps during calls
+                    // (confirmed live: AudioFlinger "pause because of UNDERRUN" logs lined up
+                    // with this interval). Firing it on a separate dispatcher keeps this loop's
+                    // own iterate/delay cadence unaffected by however long persistence takes.
+                    launch(Dispatchers.IO) { ToxSavedataStore.persistNow(applicationContext) }
                 }
             }
         }
