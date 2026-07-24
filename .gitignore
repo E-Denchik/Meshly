@@ -15,6 +15,11 @@ local.properties
 *.so
 *.a
 
+# Scratch clones/build dirs for daemon-tox/scripts/build-native-deps.sh - only the
+# resulting headers/pkgconfig/cmake-config metadata under daemon-tox/deps/<abi>/ are
+# tracked; the upstream source trees and the .a archives above are rebuilt, not committed.
+daemon-tox/deps/.build/
+
 # Logs
 *.log
 

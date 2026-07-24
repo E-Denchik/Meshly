@@ -8,7 +8,7 @@ includedir=/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/inc
 Name: Opus
 Description: Opus IETF audio codec ( build)
 URL: https://opus-codec.org/
-Version: 0
+Version: 1.5.2
 Requires:
 Conflicts:
 Libs: -L/home/kali/AndroidStudioProjects/Meshly/daemon-tox/deps/arm64-v8a/lib -lopus

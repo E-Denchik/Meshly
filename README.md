@@ -19,13 +19,15 @@ VP8-encoded video via ToxAV.
 
 | Phase | Scope | State |
 |---|---|---|
-| **Phase 1** | Android app skeleton, full Jetpack Compose UI, Room local cache, Clean Architecture layering, mock/stub JNI engine | ✅ Done. Builds (`assembleDebug`), unit tests pass, manually verified end-to-end on a physical device (onboarding → contacts → chat → calls) |
-| **Phase 2** | Real `c-toxcore`/`ToxAV` native integration (libsodium, opus, libvpx via NDK) | 🚧 Scaffolding only — CMake/Gradle wiring and the real JNI contract are in place and reviewed against upstream source, but the native build has not actually been compiled yet (needs Android builds of libsodium/opus/libvpx plus low single-digit GB disk and well under an hour of CPU time per ABI — much smaller than a Jami-based engine would have needed; see [`PHASE2_BUILD_TOX.md`](PHASE2_BUILD_TOX.md)) |
+| **Phase 1** | Android app skeleton, full Jetpack Compose UI, Room local cache, Clean Architecture layering | ✅ Done |
+| **Phase 2** | Real `c-toxcore`/`ToxAV` native integration (libsodium, opus, libvpx via NDK), wired end-to-end into `:app` | ✅ Done and **live-verified** between two separate physical Android devices — see [Live verification](#live-verification) below |
 
-Right now the app runs entirely on a **mock engine** (`org.meshly.app.core.ToxBridge`):
-account creation, contacts, messaging, and calls are all simulated in-process so the
-full UI is exercisable without the native Tox engine. This is intentional — see
-[Architecture](#architecture) below.
+The app runs entirely on the **real native Tox engine** — there is no mock/simulation
+layer anymore. Account identities, friend requests, presence, and text messages are
+genuinely generated, sent, and received over the real Tox network (DHT + onion routing,
+with TCP relay fallback). Call *signaling* (ring/accept/reject/hang-up) is likewise real;
+live microphone/camera streaming during a call is the one piece still not implemented —
+see [Known limitations](#known-limitations).
 
 **Design system**: `ui/theme/` defines a dedicated Meshly color palette (light + dark, full
 Material 3 tonal roles rather than a partial scheme), rounder shapes, and light typography
@@ -38,6 +40,30 @@ irreversible without a previously exported backup archive+password) that clears 
 identity and chat/contact history and returns to onboarding, where a different identity can be
 created or imported. There's intentionally no separate "login" screen — on this decentralized
 model, restoring an identity *is* onboarding's "Import an existing account" flow.
+
+## Live verification
+
+Beyond compiling, the real Tox engine was verified live between two independent physical
+Android devices, each running its own genuine Tox identity: real Tox IDs were generated,
+a real friend request crossed the actual internet (not a LAN shortcut), and a real text
+message was sent, delivered, and confirmed via c-toxcore's own read-receipt callback,
+then correctly displayed and persisted in the recipient's chat history.
+
+That pass also caught and fixed three real bugs that unit tests alone couldn't have
+caught, since they only show up against a live network and a second device:
+
+- **Friend requests you send could never resolve to `CONFIRMED`.** There was no code
+  path promoting an outgoing request once the peer actually connected, so chat access
+  stayed permanently locked even after a real, live friendship existed.
+- **UDP-only bootstrapping silently failed on UDP-hostile networks.** `tox_add_tcp_relay`
+  was never called anywhere, and only 3 bootstrap nodes were configured — no fallback
+  path existed for networks that block or degrade outbound UDP (a real-world condition,
+  not a hypothetical one). The engine now also registers TCP relays on a larger set of
+  well-known nodes.
+- **Incoming messages/friend requests were dropped unless the exact matching screen was
+  open at the moment they arrived**, because the repositories responsible for persisting
+  them were being re-created per screen instead of living for the app's process
+  lifetime. They're now app-scoped singletons, constructed once at process start.
 
 ## Architecture
 
@@ -52,11 +78,13 @@ Three layers, top to bottom:
                                │ StateFlow / ViewModel
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    Bridge Layer (Kotlin)                    │
-│  ToxDaemonService (foreground service) · Repositories        │
-│  ToxBridge: maps native/mock events to Kotlin Flow           │
+│  ToxDaemonService (foreground service, drives the single-    │
+│  threaded tox_iterate/toxav_iterate loop) · Repositories,    │
+│  each an app-scoped singleton (see Live verification above)  │
+│  ToxBridge: maps real native callbacks to Kotlin SharedFlow  │
 │  Room database (contacts, chat history)                      │
 └──────────────────────────────┬──────────────────────────────┘
-                               │ JNI (mock today, real in Phase 2)
+                               │ hand-written JNI
 ┌──────────────────────────────▼──────────────────────────────┐
 │                  Core / Daemon Layer                        │
 │  c-toxcore (DHT, UDP/TCP transport, libsodium) · ToxAV       │
@@ -64,40 +92,61 @@ Three layers, top to bottom:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The Bridge Layer only ever talks to a `ToxBridge`-shaped API. Phase 1 backs it with an
-in-process mock; Phase 2 will back it with `daemon-tox/`'s real native engine. The UI and
-repositories don't need to change when that swap happens.
+The Bridge Layer only ever talks to `daemon-tox`'s `ToxBridge`-shaped API, so the UI and
+repositories don't need to know anything about JNI or the native build underneath them.
 
 ## Project layout
 
 ```
-app/                          Android app module (Phase 1, always builds)
+app/                          Android app module
   src/main/java/org/meshly/app/
-    core/ToxBridge.kt          Mock engine: simulates the Tox daemon in pure Kotlin
-    data/model/                Domain models (Account, Contact, ChatMessage, CallSession)
-    data/local/                Room entities + DAOs
-    data/repository/           Account/Contact/Chat/Call repositories
-    service/                   ToxDaemonService (foreground presence), CallService
-    ui/                        Compose screens, navigation, ViewModels
-  src/test/                    Unit tests (repositories, ToxBridge mock, fakes)
+    data/model/                 Domain models (Account, Contact, ChatMessage, CallSession)
+    data/local/                 Room entities + DAOs
+    data/repository/            Account/Contact/Chat/Call repositories - talk to
+                                 daemon-tox's ToxBridge, own app-scoped singletons (see
+                                 MeshlyApplication.kt) for Contact/Chat so their event
+                                 subscriptions survive regardless of which screen is open
+    service/                    ToxDaemonService (drives the real tox_iterate/
+                                 toxav_iterate loop on a dedicated single thread), CallService
+    ui/                         Compose screens, navigation, ViewModels
+  src/test/                     Empty - see "Testing" below for why
 
-daemon-tox/                   Phase 2 native module (NOT built yet, NOT wired into :app)
-  CMakeLists.txt                Hand-written: add_subdirectory()s c-toxcore + links a
-                                 hand-written JNI wrapper (no SWIG on the Tox side)
-  build.gradle.kts              Gradle/CMake wiring
-  src/main/cpp/tox_jni.c        Hand-written JNI glue against the real tox_*/toxav_* API
+daemon-tox/                   Real c-toxcore/ToxAV native module, wired into :app
+  CMakeLists.txt                 add_subdirectory()s c-toxcore, links a hand-written JNI
+                                  wrapper against it (no SWIG on the Tox side), and wires
+                                  PKG_CONFIG_LIBDIR at deps/<abi>/lib/pkgconfig so the
+                                  three native dependencies below resolve
+  build.gradle.kts               Gradle/CMake wiring; single ABI (arm64-v8a) for now
+  deps/<abi>/                    NDK-cross-compiled libsodium/opus/libvpx. Headers, .pc
+                                  files, and CMake package configs are checked into git
+                                  (small, deterministic, portable); the .a static
+                                  archives themselves are gitignored and must be produced
+                                  locally - see scripts/build-native-deps.sh and
+                                  "Building" below
+  scripts/build-native-deps.sh   Cross-compiles libsodium/opus/libvpx for arm64-v8a and
+                                  stages them into deps/arm64-v8a/ - idempotent, and the
+                                  same script CI uses (see .github/workflows/android-ci.yml)
+  src/main/cpp/tox_jni.c         Hand-written JNI glue against the real tox_*/toxav_* API:
+                                  account lifecycle, savedata persistence, bootstrap +
+                                  TCP relay, friend management, messaging, and the full
+                                  ToxAV call-signaling surface, with real callback dispatch
   src/main/java/org/meshly/app/daemontox/
-    ToxNative.kt                 external fun JNI declarations (source-cited against upstream)
-    ToxBridge.kt                 Singleton wrapping ToxNative, SharedFlow<ToxDaemonEvent>
-    ToxDaemonEvent.kt            Sealed class for native signals
-    ToxCallbackAdapter.kt        Documents the hand-written-JNI callback dispatch pattern
-    ToxFriendInfo.kt             Assembled per-friend state
-    ToxCallSession.kt            Assembled per-call state
+    ToxNative.kt                  external fun JNI declarations, cited against upstream
+                                   tox.h/toxav.h line numbers
+    ToxBridge.kt                  Singleton wrapping ToxNative; SharedFlow<ToxDaemonEvent>
+    ToxDaemonEvent.kt              Sealed class for native signals
+    ToxCallbackAdapter.kt          Receives the native callback dispatch (see tox_jni.c's
+                                   top-of-file doc on the shared-JNIEnv design and its
+                                   single-thread requirement)
 
-native/upstream/c-toxcore/    Git submodule: real c-toxcore/ToxAV source (reference +
-                               eventual build target for Phase 2)
+native/upstream/c-toxcore/    Git submodule: real c-toxcore/ToxAV source, actually built
+                               (not just a reference) as daemon-tox's native dependency
 
-PHASE2_BUILD_TOX.md           Exact remaining steps to compile the real native engine
+PHASE2_BUILD_TOX.md           Historical planning document written before the native
+                               build was completed - useful for the "why" behind the
+                               module's structure, but its own "not yet built" status
+                               section is now stale. See "Building" below for the current,
+                               accurate build recipe.
 ```
 
 ## Building
@@ -105,12 +154,52 @@ PHASE2_BUILD_TOX.md           Exact remaining steps to compile the real native e
 ```bash
 git clone --recurse-submodules git@github.com:E-Denchik/Meshly.git
 cd Meshly
-./gradlew assembleDebug   # Phase 1 app, mock engine — this is what builds today
-./gradlew test            # unit tests
+./gradlew assembleDebug   # builds :app AND the real native :daemon-tox engine
 ```
 
-`daemon-tox/` is intentionally **not** included in `settings.gradle.kts` yet, so none of
-the above touches the native build. See `PHASE2_BUILD_TOX.md` before trying to build it.
+Because `:app` depends on `:daemon-tox`, a plain `assembleDebug` now also drives
+`daemon-tox`'s CMake/native build — which needs two things a fresh clone doesn't have yet:
+
+1. **Android NDK `27.2.12479018`** (matches `daemon-tox/build.gradle.kts`'s `ndkVersion`),
+   installable via `sdkmanager --install "ndk;27.2.12479018"`.
+2. **`daemon-tox/deps/arm64-v8a/lib/{libsodium,libopus,libvpx}.a`** — NDK-cross-compiled
+   static builds of `libsodium` (full build, `LIBSODIUM_FULL_BUILD=1`, so it includes the
+   legacy `crypto_pwhash_scryptsalsa208sha256_*` symbols `toxencryptsave.c` needs), `opus`,
+   and `libvpx`, produced by:
+
+   ```bash
+   ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018 ./daemon-tox/scripts/build-native-deps.sh
+   ```
+
+   The headers, `.pc` files, and CMake package configs these libraries produce are small,
+   deterministic, and checked into `daemon-tox/deps/arm64-v8a/` directly so c-toxcore's
+   `pkg_search_module`-based dependency discovery (`cmake/Dependencies.cmake`) has
+   something to resolve against without a build; only the `.a` static archives themselves
+   are gitignored and have to be produced locally (or restored from CI's cache — see
+   "Continuous integration" below) before `daemon-tox`'s CMake configure step will
+   succeed. The script is idempotent — it skips a library whose `.a` is already staged,
+   so re-running it after a fresh clone only rebuilds what's missing; pass `--force` to
+   rebuild everything from scratch (e.g. after bumping one of the pinned upstream tags
+   at the top of the script). Requires `pkg-config`, `autoconf`, `automake`, `libtool`,
+   `cmake`, and `ninja` on the host in addition to the NDK.
+
+`PHASE2_BUILD_TOX.md` covers the reasoning and exact upstream CMake line numbers behind
+each of these steps in more depth; treat its own "status" framing as historical, not
+current — the recipe above reflects what's actually been built and verified.
+
+### Testing
+
+```bash
+./gradlew test
+```
+
+`app/src/test/` is currently empty. The previous Phase 1 unit tests (repositories, mock
+`ToxBridge`, fakes) were written against the in-process mock engine and don't apply to a
+real native `.so`-backed singleton — a plain JVM unit test can't load `libtoxcore-jni.so`
+at all. They were deliberately removed rather than left broken; real coverage for this
+layer needs Android instrumented tests (`androidTest`, running on-device/emulator against
+the actual native library) or an integration-test harness against a real `Tox`/`ToxAV`
+instance, neither of which exists yet.
 
 ### Running on a device
 
@@ -127,10 +216,22 @@ options.
 
 ### Continuous integration
 
-`.github/workflows/android-ci.yml` runs `./gradlew test assembleDebug` on every push/PR
-to `main` using GitHub's free hosted runners, and uploads the resulting debug APK and
-unit test reports as workflow artifacts. It checks out without submodules, since `:app`
-doesn't depend on `:daemon-tox`/`native/upstream/c-toxcore` (Phase 2, not built yet).
+`.github/workflows/android-ci.yml` builds and unit-tests the app on GitHub's hosted
+runners against the real native engine, on every push/PR to `main`:
+
+1. Checks out the repo with `submodules: recursive` (needed for `native/upstream/c-toxcore`
+   and its own nested `third_party/cmp` submodule).
+2. Installs NDK `27.2.12479018` via `sdkmanager`, plus `ninja`/`autoconf`/`automake`/
+   `libtool`/`pkg-config` via `apt`.
+3. Restores `daemon-tox/deps/arm64-v8a/lib/{libsodium,libopus,libvpx}.a` from an
+   `actions/cache` entry keyed on `build-native-deps.sh`'s contents; on a cache miss it
+   runs that script to rebuild them (a full native cross-compile takes several minutes,
+   so this only happens again when the script itself changes).
+4. Runs `./gradlew test --stacktrace` then `./gradlew assembleDebug --stacktrace`, and
+   uploads the resulting debug APK and test reports as workflow artifacts.
+
+Locally reproduce exactly what CI does with `./daemon-tox/scripts/build-native-deps.sh`
+followed by `./gradlew test assembleDebug` (see "Building" above).
 
 ## Distribution
 
@@ -142,9 +243,10 @@ Per the project's goal of not depending on a single distribution channel:
   merged into the separate [`fdroiddata`](https://gitlab.com/fdroid/fdroiddata) repo,
   which hasn't been submitted yet — this repo only prepares the metadata and a
   reproducible Gradle build.
-- **Direct APK**: the CI workflow above produces a debug APK on every build; a signed
-  release APK can be attached to GitHub Releases once a release signing key exists
-  (deliberately not part of this repo — see `.gitignore`'s `*.jks`/`*.keystore` rule).
+- **Direct APK**: CI (see "Continuous integration" above) uploads a debug APK as a
+  workflow artifact on every push/PR; a signed *release* APK can be attached to GitHub
+  Releases once a release signing key exists (deliberately not part of this repo — see
+  `.gitignore`'s `*.jks`/`*.keystore` rule).
 - **Google Play**: optional, not set up.
 
 ## Localization
@@ -178,6 +280,25 @@ switcher UI. On API < 33 this is simply ignored; the base auto-detection above s
 New user-facing strings should be added to `values/` first and then mirrored into every
 other locale folder to keep them in sync — nothing enforces this automatically today.
 
+## Known limitations
+
+- **No real audio/video streaming yet.** Call *signaling* — `toxav_call`/
+  `toxav_answer`/`toxav_call_control` — is genuinely wired and really reaches the peer
+  (both sides observe a real CONNECTED state), but capturing the microphone/camera and
+  feeding frames to `toxav_audio_send_frame`/`toxav_video_send_frame`, and playing back
+  received frames, is a full separate `AudioRecord`/`Camera2`/`AudioTrack` media
+  pipeline that hasn't been built yet. A call currently connects but carries no live
+  audio/video payload.
+- **No message history before a friendship, and no offline delivery.** Plain Tox has no
+  store-and-forward: a message sent while the peer isn't connected is marked failed
+  immediately rather than queued, matching `tox_friend_send_message`'s own
+  `TOX_ERR_FRIEND_SEND_MESSAGE_FRIEND_NOT_CONNECTED` behavior.
+- **Single ABI.** `daemon-tox` currently only targets `arm64-v8a`; other ABIs would need
+  their own cross-compiled `deps/<abi>/` tree.
+- **Blocking is local-only.** Tox has no protocol-level "block" - `blockContact`/
+  `unblockContact` only flip local UI state; the underlying friendship and `friendNumber`
+  are left untouched.
+
 ## License
 
 Meshly links against `c-toxcore`, which is GPL-3.0-or-later. Every source file in this
@@ -187,11 +308,23 @@ checked out) carries the same GPLv3 text.
 
 ## Networking defaults
 
-- Default Tox bootstrap nodes (well-known public nodes, `host:port:public-key-hex` —
-  configurable per-account in Settings). The list below was spot-checked against
+- Default Tox bootstrap nodes (well-known public nodes, `host:port:public-key-hex`,
+  each also registered as a TCP relay so onion routing still works on networks that
+  block or degrade outbound UDP — see [Live verification](#live-verification)).
+  Configurable per-account in Settings. Spot-checked against
   [nodes.tox.chat](https://nodes.tox.chat)'s live status page while writing this
   document (2026-07-23) — bootstrap node uptime/ownership rotates over time, so
   re-check that page for the current list rather than treating this as permanent:
   - `node.tox.biribiri.org:33445:F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67`
-  - `tox1.mf-net.eu:33445:B3E5FA80DC8EBD1149AD2AB35ED8B85BD546DEDE261CA593234C619249419506`
+  - `tox.abilinski.com:33445:10C00EB250C3233E343E2AEBA07115A5C28920E9C8D29492F6D00B29049EDC7`
+  - `tox.plastiras.org:33445:8E8B63299B3D520FB377FE5100E65E3322F7AE5B20A0ACED2981769FC5B43B4`
+  - `205.185.115.131:53:3091C6BEB2A993F1C6300C16549FABA67098FF3D62C6D253828B531470B53D68`
+  - `3.0.24.15:33445:E20ABCF38CDBFFD7D04B29C956B33F7B27A3BB7AF0618101617B036E4AEA402D`
+  - `tox2.mf-net.eu:33445:70EA214FDE161E7432530605213F18F7427DC773E276B3E317A07531F548545F`
+  - `tox3.mf-net.eu:33445:F4FC9398B7167668ED2BCF85634E04D4CDCDD2F95DA5F305BD234888B6E6A771`
+  - `tox4.mf-net.eu:33445:DCD342A0D5E2AA8E35C2BD2C7988F906EEB631B35100170A7F30E77D7F596442`
+  - `144.172.88.203:33445:2016A0F2797EE3A8B004BA623F11AAFC8146F1B8F45107232A1A1AECCE856674`
+  - `119.59.101.63:33445:197F746696062FA3BD07BB3BC0656ABD6692B4DAA27DACF0F474754F2B09B060`
+  - `172.86.77.39:33445:AFFD3FAD3460E62A894E439534B27E5A5DCFE379C1C0FB78DEF1B150A87E900F`
+  - `144.217.167.73:33445:7E5668E0EE09E19F320AD47902419331FFEE147BB3606769CFBE921A2A2FD34C`
 - Package name: `org.meshly.app`

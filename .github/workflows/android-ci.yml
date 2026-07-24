@@ -11,10 +11,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Builds and tests the Phase 1 app (Kotlin + Jetpack Compose, mock JNI engine). The
-# native/upstream/jami-daemon submodule and the daemon/ Gradle module are Phase 2's real
-# libjami build - :app doesn't depend on :daemon (see PHASE2_BUILD.md), so this workflow
-# deliberately never checks out the submodule or touches native/CMake at all.
+# Builds and tests the app against the real c-toxcore/ToxAV engine (see README.md's
+# "Building" section). :app depends on :daemon-tox, which needs both the
+# native/upstream/c-toxcore submodule (including its own nested third_party/cmp
+# submodule - "submodules: recursive" below covers that) and a cross-compiled
+# libsodium/opus/libvpx tree under daemon-tox/deps/arm64-v8a/lib/*.a - those .a files
+# are gitignored build output, so this workflow reproduces them via
+# daemon-tox/scripts/build-native-deps.sh, caching the result keyed on that script's
+# contents so most runs don't pay the native cross-compile cost again.
+env:
+  NDK_VERSION: "27.2.12479018"
+
 jobs:
   build-and-test:
     name: Build and unit test
@@ -23,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: recursive
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -36,6 +43,28 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build autoconf automake libtool pkg-config
+
+      - name: Install Android NDK ${{ env.NDK_VERSION }}
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${{ env.NDK_VERSION }}"
+
+      - name: Cache native dependency build (libsodium/opus/libvpx)
+        id: native-deps-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            daemon-tox/deps/arm64-v8a/lib/libsodium.a
+            daemon-tox/deps/arm64-v8a/lib/libopus.a
+            daemon-tox/deps/arm64-v8a/lib/libvpx.a
+          key: native-deps-arm64-v8a-ndk${{ env.NDK_VERSION }}-${{ hashFiles('daemon-tox/scripts/build-native-deps.sh') }}
+
+      - name: Build native dependencies (libsodium/opus/libvpx)
+        if: steps.native-deps-cache.outputs.cache-hit != 'true'
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+        run: ./daemon-tox/scripts/build-native-deps.sh
 
       - name: Unit tests
         run: ./gradlew test --stacktrace
