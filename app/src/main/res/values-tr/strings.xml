@@ -105,6 +105,9 @@
     <string name="action_back">Geri</string>
     <string name="action_continue">Devam et</string>
     <string name="own_tox_id_qr_title">Tox ID\'m</string>
+    <string name="content_desc_copy_tox_id">Tox ID\'yi kopyala</string>
+    <string name="tox_id_copied">Tox ID panoya kopyalandı</string>
+    <string name="tox_id_qr_content_description">Tox ID\'nizin QR kodu</string>
     <string name="import_account_title">Hesap arşivini içe aktar</string>
     <string name="import_account_desc">Başka bir cihazda oluşturulan parola korumalı hesap yedeğini yapıştırın (o cihazda Ayarlar, ardından Hesabı dışa aktar), ardından parolasını girin.</string>
     <string name="label_backup_archive">Yedek arşivi</string>

@@ -105,6 +105,9 @@
     <string name="action_back">Retour</string>
     <string name="action_continue">Continuer</string>
     <string name="own_tox_id_qr_title">Mon ID Tox</string>
+    <string name="content_desc_copy_tox_id">Copier l\'ID Tox</string>
+    <string name="tox_id_copied">ID Tox copié dans le presse-papiers</string>
+    <string name="tox_id_qr_content_description">Code QR de votre ID Tox</string>
     <string name="import_account_title">Importer une archive de compte</string>
     <string name="import_account_desc">Collez la sauvegarde de compte protégée par mot de passe créée sur un autre appareil (dans Paramètres, Exporter le compte), puis saisissez son mot de passe.</string>
     <string name="label_backup_archive">Archive de sauvegarde</string>

@@ -27,9 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import org.meshly.app.R
 
 /**
  * Renders [content] (typically the account's own 76-char Tox ID) as a black-and-white QR code,
@@ -42,7 +44,10 @@ fun QrCodeImage(content: String, modifier: Modifier = Modifier, sizePx: Int = 51
     val bitmap = remember(content, sizePx) { content.toQrBitmap(sizePx) }
     Image(
         bitmap = bitmap.asImageBitmap(),
-        contentDescription = content,
+        // A generic description, not the raw ID - a screen reader shouldn't read out a 76-char
+        // hex string just to announce "there's a QR code here" (the ID itself is already shown
+        // as accessible text nearby via CopyableToxId, wherever this is used).
+        contentDescription = stringResource(R.string.tox_id_qr_content_description),
         modifier = modifier.size(240.dp)
     )
 }

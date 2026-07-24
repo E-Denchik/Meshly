@@ -105,6 +105,9 @@
     <string name="action_back">رجوع</string>
     <string name="action_continue">متابعة</string>
     <string name="own_tox_id_qr_title">معرّف Tox الخاص بي</string>
+    <string name="content_desc_copy_tox_id">نسخ معرّف Tox</string>
+    <string name="tox_id_copied">تم نسخ معرّف Tox إلى الحافظة</string>
+    <string name="tox_id_qr_content_description">رمز QR الخاص بمعرّف Tox الخاص بك</string>
     <string name="import_account_title">استيراد أرشيف الحساب</string>
     <string name="import_account_desc">الصق النسخة الاحتياطية للحساب المحمية بكلمة مرور والتي تم إنشاؤها على جهاز آخر (من الإعدادات هناك، اختر تصدير الحساب)، ثم أدخل كلمة المرور الخاصة بها.</string>
     <string name="label_backup_archive">أرشيف النسخة الاحتياطية</string>

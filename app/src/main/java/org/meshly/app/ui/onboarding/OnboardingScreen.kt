@@ -35,14 +35,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -61,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.meshly.app.R
+import org.meshly.app.ui.components.CopyableToxId
 import org.meshly.app.ui.components.QrCodeImage
 import org.meshly.app.ui.theme.MeshWordmarkStyle
 import org.meshly.app.ui.theme.Spacing
@@ -208,14 +207,7 @@ private fun OwnIdStep(toxId: String, onContinue: () -> Unit) {
     if (toxId.isNotBlank()) {
         QrCodeImage(content = toxId, modifier = Modifier.padding(vertical = Spacing.lg))
     }
-    SelectionContainer {
-        Text(
-            toxId,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Spacing.xl)
-        )
-    }
+    CopyableToxId(toxId, modifier = Modifier.padding(bottom = Spacing.xl))
     Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.action_continue))
     }
@@ -260,7 +252,7 @@ private fun ImportAccountStep(onImport: (payload: String, password: String) -> B
     ) {
         Text(stringResource(R.string.action_import))
     }
-    OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.xs)) {
+    TextButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.xs)) {
         Text(stringResource(R.string.action_back))
     }
 }

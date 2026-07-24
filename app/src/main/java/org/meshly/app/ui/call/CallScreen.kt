@@ -124,6 +124,9 @@ fun CallScreen(
     LaunchedEffect(session?.isCameraOn) {
         videoSession?.setCameraEnabled(session?.isCameraOn == true)
     }
+    LaunchedEffect(session?.state) {
+        videoSession?.setCallConnected(session?.state == CallState.CONNECTED)
+    }
 
     val remoteFrameFlow = remember(videoSession) { videoSession?.remoteFrame ?: MutableStateFlow(null) }
     val remoteFrame by remoteFrameFlow.collectAsStateWithLifecycle()

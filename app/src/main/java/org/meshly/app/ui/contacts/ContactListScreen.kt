@@ -58,7 +58,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,8 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.journeyapps.barcodescanner.ScanContract
@@ -81,9 +78,9 @@ import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
-import org.meshly.app.ui.components.Avatar
-import org.meshly.app.ui.components.AvatarSize
+import org.meshly.app.ui.components.ContactListItem
 import org.meshly.app.ui.components.EmptyState
+import org.meshly.app.ui.components.MeshlyTopBar
 import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
@@ -127,7 +124,7 @@ fun ContactListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.contacts_title)) }) },
+        topBar = { MeshlyTopBar(title = stringResource(R.string.contacts_title)) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -260,29 +257,14 @@ private fun ContactRow(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .let { if (contact.status == ContactStatus.CONFIRMED) it.clickable(onClick = onOpenChat) else it }
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    ContactListItem(
+        displayName = contact.displayName,
+        toxId = contact.toxId,
+        modifier = modifier,
+        onClick = if (contact.status == ContactStatus.CONFIRMED) onOpenChat else null
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-            Avatar(name = contact.displayName, seed = contact.toxId, size = AvatarSize.Small)
-            Column(modifier = Modifier.padding(start = Spacing.md)) {
-                Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    contact.toxId,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
         when (contact.status) {
-            ContactStatus.PENDING_INCOMING -> Row {
+            ContactStatus.PENDING_INCOMING -> {
                 IconButton(onClick = onAccept) {
                     Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.content_desc_accept))
                 }
@@ -290,7 +272,7 @@ private fun ContactRow(
                     Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.content_desc_reject))
                 }
             }
-            ContactStatus.CONFIRMED -> Row {
+            ContactStatus.CONFIRMED -> {
                 val isOnline = contact.presence == PresenceStatus.ONLINE
                 Box {
                     IconButton(onClick = { onCall(CallType.AUDIO) }, enabled = isOnline) {

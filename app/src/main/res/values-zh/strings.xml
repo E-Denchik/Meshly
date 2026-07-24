@@ -105,6 +105,9 @@
     <string name="action_back">返回</string>
     <string name="action_continue">继续</string>
     <string name="own_tox_id_qr_title">我的 Tox ID</string>
+    <string name="content_desc_copy_tox_id">复制 Tox ID</string>
+    <string name="tox_id_copied">Tox ID 已复制到剪贴板</string>
+    <string name="tox_id_qr_content_description">您的 Tox ID 二维码</string>
     <string name="import_account_title">导入账号存档</string>
     <string name="import_account_desc">粘贴在另一台设备上创建的、受密码保护的账号备份(在该设备的“设置”中选择“导出账号”),然后输入其密码。</string>
     <string name="label_backup_archive">备份存档</string>

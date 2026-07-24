@@ -50,7 +50,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -59,7 +58,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -68,8 +66,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import org.meshly.app.R
 import org.meshly.app.ui.components.Avatar
+import org.meshly.app.ui.components.CopyableToxId
+import org.meshly.app.ui.components.MeshlyTopBar
 import org.meshly.app.ui.components.QrCodeImage
+import org.meshly.app.ui.components.ToxIdCompact
 import org.meshly.app.ui.onboarding.ExportAccountDialog
+import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -95,7 +97,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
+        topBar = { MeshlyTopBar(title = stringResource(R.string.settings_title)) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -104,7 +106,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            ListItem(headlineContent = { Text(stringResource(R.string.section_account), style = MaterialTheme.typography.titleMedium) })
+            SectionHeader(stringResource(R.string.section_account))
             ListItem(
                 leadingContent = {
                     Avatar(
@@ -113,7 +115,7 @@ fun SettingsScreen(
                     )
                 },
                 headlineContent = { Text(account?.nickname ?: stringResource(R.string.label_no_nickname)) },
-                supportingContent = { Text(account?.toxId ?: "") }
+                supportingContent = { account?.toxId?.let { ToxIdCompact(it) } }
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.own_tox_id_qr_title)) },
@@ -147,7 +149,7 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            ListItem(headlineContent = { Text(stringResource(R.string.section_network), style = MaterialTheme.typography.titleMedium) })
+            SectionHeader(stringResource(R.string.section_network))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.bootstrap_nodes_title)) },
                 supportingContent = { Text(stringResource(R.string.bootstrap_nodes_desc)) }
@@ -166,7 +168,7 @@ fun SettingsScreen(
                     }
                 )
             }
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = newBootstrapNode,
@@ -202,7 +204,7 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            ListItem(headlineContent = { Text(stringResource(R.string.section_diagnostics), style = MaterialTheme.typography.titleMedium) })
+            SectionHeader(stringResource(R.string.section_diagnostics))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.export_logs_title)) },
                 supportingContent = { Text(stringResource(R.string.export_logs_desc)) },
@@ -227,7 +229,7 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            ListItem(headlineContent = { Text(stringResource(R.string.section_background), style = MaterialTheme.typography.titleMedium) })
+            SectionHeader(stringResource(R.string.section_background))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.battery_opt_title)) },
                 supportingContent = { Text(stringResource(R.string.battery_opt_desc)) },
@@ -272,10 +274,9 @@ fun SettingsScreen(
             text = {
                 Column {
                     account?.toxId?.let { toxId -> QrCodeImage(content = toxId) }
-                    Text(
+                    CopyableToxId(
                         account?.toxId.orEmpty(),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 12.dp)
+                        modifier = Modifier.padding(top = Spacing.md)
                     )
                 }
             },
@@ -312,4 +313,17 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+/** A colored, emphasized label so section boundaries actually read as section boundaries while
+ *  scrolling, instead of blending into the regular content `ListItem`s around them (which is
+ *  all a plain `titleMedium` headline used to look like). */
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+    )
 }

@@ -31,10 +31,14 @@ import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.os.Build
+import android.os.Process
 import androidx.core.content.ContextCompat
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
@@ -71,6 +75,12 @@ class AudioCallEngine(private val context: Context) {
 
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var playbackJob: Job? = null
+
+    // Dedicated (not Dispatchers.IO's shared pool) so THREAD_PRIORITY_URGENT_AUDIO - set once,
+    // in startPlayback() - reliably applies to whichever thread actually runs playFrame() on
+    // every call, not just whichever pooled thread happened to run the first one.
+    private val playbackThread: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "call-audio-playback") }
+    private val playbackDispatcher = playbackThread.asCoroutineDispatcher()
 
     /** Starts mic capture (if `RECORD_AUDIO` is granted - best-effort, matches
      *  `MainActivity.requestRuntimePermissions()`'s existing best-effort request) and speaker
@@ -135,6 +145,11 @@ class AudioCallEngine(private val context: Context) {
         audioRecord = record
         record.startRecording()
         thread(name = "call-audio-capture") {
+            // Android's real-time-audio priority hint (maps to a Linux nice value well below
+            // normal app threads) - without it, this thread competes on equal footing with the
+            // video pipeline's camera/conversion work for CPU time, and losing that race is
+            // exactly what audible choppiness/dropouts under load look like.
+            runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO) }
             val buffer = ShortArray(FRAME_SAMPLES)
             try {
                 while (running) {
@@ -155,7 +170,8 @@ class AudioCallEngine(private val context: Context) {
     }
 
     private fun startPlayback(friendNumber: Int) {
-        playbackJob = engineScope.launch {
+        playbackJob = engineScope.launch(playbackDispatcher) {
+            runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO) }
             ToxBridge.events
                 .filterIsInstance<ToxDaemonEvent.AudioFrameReceived>()
                 .filter { it.friendNumber == friendNumber }

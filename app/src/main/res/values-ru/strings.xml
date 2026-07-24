@@ -105,6 +105,9 @@
     <string name="action_back">Назад</string>
     <string name="action_continue">Продолжить</string>
     <string name="own_tox_id_qr_title">Мой Tox ID</string>
+    <string name="content_desc_copy_tox_id">Скопировать Tox ID</string>
+    <string name="tox_id_copied">Tox ID скопирован в буфер обмена</string>
+    <string name="tox_id_qr_content_description">QR-код вашего Tox ID</string>
     <string name="import_account_title">Импорт архива аккаунта</string>
     <string name="import_account_desc">Вставьте защищённую паролем резервную копию аккаунта, созданную на другом устройстве (в Настройках там — «Экспорт аккаунта»), затем введите пароль от неё.</string>
     <string name="label_backup_archive">Архив резервной копии</string>

@@ -22,7 +22,6 @@ package org.meshly.app.ui.calls
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +42,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -51,7 +49,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -60,9 +57,9 @@ import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
-import org.meshly.app.ui.components.Avatar
-import org.meshly.app.ui.components.AvatarSize
+import org.meshly.app.ui.components.ContactListItem
 import org.meshly.app.ui.components.EmptyState
+import org.meshly.app.ui.components.MeshlyTopBar
 import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.CallViewModel
 import org.meshly.app.ui.viewmodel.ContactViewModel
@@ -83,7 +80,7 @@ fun CallsScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.calls_title)) }) },
+        topBar = { MeshlyTopBar(title = stringResource(R.string.calls_title)) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -143,56 +140,42 @@ private fun DialRow(
     modifier: Modifier = Modifier
 ) {
     val isOnline = contact.presence == PresenceStatus.ONLINE
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    ContactListItem(
+        displayName = contact.displayName,
+        toxId = contact.toxId,
+        modifier = modifier,
+        subtitleOverride = if (isOnline) null else stringResource(R.string.call_target_offline_hint)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-            Avatar(name = contact.displayName, seed = contact.toxId, size = AvatarSize.Small)
-            Column(modifier = Modifier.padding(start = Spacing.md)) {
-                Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    if (isOnline) contact.toxId else stringResource(R.string.call_target_offline_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        Box {
+            IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.AUDIO) }, enabled = isOnline) {
+                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
+            }
+            if (!isOnline) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOfflineCallAttempt
+                        )
                 )
             }
         }
-        Row {
-            Box {
-                IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.AUDIO) }, enabled = isOnline) {
-                    Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))
-                }
-                if (!isOnline) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onOfflineCallAttempt
-                            )
-                    )
-                }
+        Box {
+            IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.VIDEO) }, enabled = isOnline) {
+                Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
             }
-            Box {
-                IconButton(onClick = { onDial(contact.toxId, contact.displayName, CallType.VIDEO) }, enabled = isOnline) {
-                    Icon(Icons.Filled.Videocam, contentDescription = stringResource(R.string.content_desc_video_call))
-                }
-                if (!isOnline) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onOfflineCallAttempt
-                            )
-                    )
-                }
+            if (!isOnline) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOfflineCallAttempt
+                        )
+                )
             }
         }
     }

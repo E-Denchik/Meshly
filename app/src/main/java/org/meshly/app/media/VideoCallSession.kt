@@ -44,6 +44,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
@@ -71,10 +72,23 @@ class VideoCallSession(
     private var camera: Camera? = null
     private var boundPreviewView: PreviewView? = null
     private var remoteFrameJob: Job? = null
-    private var remoteBitmapCache: Bitmap? = null
+
+    // Reused across frames (see YuvFrameConverter's doc) - the analyzer callback is always the
+    // same single thread (analysisExecutor), and the remote-frame collector below is likewise
+    // always the same coroutine, so neither buffer set needs synchronization.
+    private val sendBuffers = YuvFrameConverter.SendBuffers()
+    private val receiveBuffers = YuvFrameConverter.ReceiveBuffers()
 
     @Volatile private var isFrontCamera = true
     @Volatile private var cameraEnabled = true
+    // Local self-preview binds (and shows) the camera as soon as the screen is up, so the user
+    // can see themselves while dialing/ringing - matches other messengers. But actually
+    // *transmitting* frames before the call is connected is pointless: toxav_video_send_frame
+    // has no active AV session to send into yet, so every call fails (logged, and the wasted
+    // YUV conversion work runs for nothing) until the peer actually answers. Gated on the same
+    // signal CallRepository already uses to start/stop AudioCallEngine, so video now follows
+    // the same "only transmit once actually connected" rule audio already did.
+    @Volatile private var callConnected = false
     @Volatile private var lastSendTimeMs = 0L
     @Volatile private var started = false
 
@@ -94,12 +108,16 @@ class VideoCallSession(
             ToxBridge.events
                 .filterIsInstance<ToxDaemonEvent.VideoFrameReceived>()
                 .filter { it.friendNumber == friendNumber }
+                // If rendering ever falls behind the incoming frame rate, always jump to the
+                // latest frame instead of working through a backlog in arrival order - without
+                // this, a slow stretch would show up as growing, ever-increasing lag rather
+                // than just briefly-stale video that catches back up on its own.
+                .conflate()
                 .collect { frame ->
                     val bitmap = YuvFrameConverter.renderToBitmap(
                         frame.width, frame.height, frame.y, frame.u, frame.v,
-                        frame.yStride, frame.uStride, frame.vStride, remoteBitmapCache
+                        frame.yStride, frame.uStride, frame.vStride, receiveBuffers
                     )
-                    remoteBitmapCache = bitmap
                     _remoteFrame.value = bitmap
                 }
         }
@@ -119,6 +137,13 @@ class VideoCallSession(
      *  toggles) - the peer simply stops receiving new video until re-enabled. */
     fun setCameraEnabled(enabled: Boolean) {
         cameraEnabled = enabled
+    }
+
+    /** Call whenever the call's [org.meshly.app.data.model.CallState] changes - only
+     *  [org.meshly.app.data.model.CallState.CONNECTED] actually allows sending; every other
+     *  state (dialing, ringing, ended) just skips the analyzer's frame-send step entirely. */
+    fun setCallConnected(connected: Boolean) {
+        callConnected = connected
     }
 
     fun flipCamera() {
@@ -150,11 +175,11 @@ class VideoCallSession(
                 .also { analysis ->
                     analysis.setAnalyzer(analysisExecutor) { imageProxy ->
                         try {
-                            if (cameraEnabled) {
+                            if (cameraEnabled && callConnected) {
                                 val now = SystemClock.elapsedRealtime()
                                 if (now - lastSendTimeMs >= MIN_FRAME_INTERVAL_MS) {
                                     lastSendTimeMs = now
-                                    val i420 = YuvFrameConverter.imageProxyToI420(imageProxy, imageProxy.imageInfo.rotationDegrees)
+                                    val i420 = YuvFrameConverter.imageProxyToI420(imageProxy, imageProxy.imageInfo.rotationDegrees, sendBuffers)
                                     val ok = ToxBridge.sendVideoFrame(friendNumber, i420.width, i420.height, i420.y, i420.u, i420.v)
                                     if (!ok) {
                                         android.util.Log.w("VideoCallSession", "sendVideoFrame failed for friend=$friendNumber ${i420.width}x${i420.height}")

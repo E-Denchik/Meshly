@@ -54,6 +54,7 @@ add_subdirectory(${TOXCORE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/c-toxcore)
 
 add_library(toxcore-jni SHARED
     src/main/cpp/tox_jni.c
+    src/main/cpp/yuv_convert.c
 )
 
 # toxcore_static's own headers live at TOXCORE_DIR/{toxcore,toxav}/*.h (source-tree layout,

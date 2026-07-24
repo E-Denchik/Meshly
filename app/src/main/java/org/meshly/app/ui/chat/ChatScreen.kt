@@ -36,7 +36,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Call
@@ -54,7 +53,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +71,7 @@ import org.meshly.app.data.model.CallType
 import org.meshly.app.data.model.ChatMessage
 import org.meshly.app.data.model.MessageStatus
 import org.meshly.app.data.model.PresenceStatus
+import org.meshly.app.ui.components.MeshlyTopBar
 import org.meshly.app.ui.theme.Spacing
 import org.meshly.app.ui.viewmodel.ChatViewModel
 import org.meshly.app.ui.viewmodel.ContactViewModel
@@ -114,13 +113,9 @@ fun ChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(peerDisplayName) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.content_desc_back))
-                    }
-                },
+            MeshlyTopBar(
+                title = peerDisplayName,
+                onBack = onBack,
                 actions = {
                     IconButton(onClick = { onStartCall(CallType.AUDIO) }) {
                         Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.content_desc_audio_call))

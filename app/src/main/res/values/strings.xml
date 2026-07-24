@@ -105,6 +105,9 @@
     <string name="action_back">Back</string>
     <string name="action_continue">Continue</string>
     <string name="own_tox_id_qr_title">My Tox ID</string>
+    <string name="content_desc_copy_tox_id">Copy Tox ID</string>
+    <string name="tox_id_copied">Tox ID copied to clipboard</string>
+    <string name="tox_id_qr_content_description">QR code of your Tox ID</string>
     <string name="import_account_title">Import account archive</string>
     <string name="import_account_desc">Paste the password-protected account backup created from another device (Settings, then Export account there), then enter its password.</string>
     <string name="label_backup_archive">Backup archive</string>

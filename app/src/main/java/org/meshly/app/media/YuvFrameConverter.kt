@@ -22,55 +22,94 @@ package org.meshly.app.media
 
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
-import kotlin.math.abs
+import org.meshly.app.daemontox.YuvNative
 
 /** Tightly-packed planar I420 (`y.size == width*height`, `u.size == v.size ==
  *  (width/2)*(height/2)`, no per-row padding) - the exact layout
- *  `toxav_video_send_frame` expects (see `ToxNative.toxavVideoSendFrame`'s doc). */
+ *  `toxav_video_send_frame` expects (see `ToxNative.toxavVideoSendFrame`'s doc). The backing
+ *  arrays are [YuvFrameConverter.SendBuffers]-owned scratch space, valid only until the next
+ *  [YuvFrameConverter.imageProxyToI420] call - callers must finish using one frame (e.g. hand
+ *  it to `toxav_video_send_frame`) before requesting the next. */
 data class I420Frame(val width: Int, val height: Int, val y: ByteArray, val u: ByteArray, val v: ByteArray)
 
 /**
  * Pure YUV420/I420 <-> pixel conversions used by the call video pipeline. No Android
  * lifecycle/camera state lives here - [VideoCallSession] owns capture/CameraX, this just
  * converts buffers, so it's trivially testable in isolation.
+ *
+ * Both directions take caller-owned, reused scratch buffers ([SendBuffers]/[ReceiveBuffers])
+ * instead of allocating fresh arrays per frame - at video frame rates, per-frame allocation
+ * churn was a real source of GC pressure and visible call lag (a growing backlog of stale,
+ * queued frames as processing fell behind arrival rate). The actual pixel math runs in native
+ * code ([YuvNative]) for the same reason: interpreted/JIT'd Kotlin per-pixel loops couldn't
+ * keep up in real time at 640x480@15fps.
  */
 object YuvFrameConverter {
 
+    /** Scratch buffers for [imageProxyToI420], one instance per capture session. Resized only
+     *  when the camera's frame dimensions actually change (they don't, frame to frame), not on
+     *  every call. */
+    class SendBuffers {
+        var y = ByteArray(0)
+        var u = ByteArray(0)
+        var v = ByteArray(0)
+        var rotatedY = ByteArray(0)
+        var rotatedU = ByteArray(0)
+        var rotatedV = ByteArray(0)
+    }
+
+    /** Scratch buffers for [renderToBitmap], one instance per remote-video render target. */
+    class ReceiveBuffers {
+        var pixels = IntArray(0)
+        var bitmap: Bitmap? = null
+    }
+
     /**
-     * Converts a CameraX `YUV_420_888` [ImageProxy] into a tightly-packed [I420Frame], rotated
-     * by [rotationDegrees] (from `imageInfo.rotationDegrees`) so the frame the peer receives is
-     * upright regardless of how the device/sensor is oriented - CameraX's `ImageAnalysis`
-     * doesn't rotate pixel data for you, only reports the needed rotation.
+     * Converts a CameraX `YUV_420_888` [ImageProxy] into a tightly-packed [I420Frame] (backed
+     * by [buffers]' scratch arrays), rotated by [rotationDegrees] (from
+     * `imageInfo.rotationDegrees`) so the frame the peer receives is upright regardless of how
+     * the device/sensor is oriented - CameraX's `ImageAnalysis` doesn't rotate pixel data for
+     * you, only reports the needed rotation.
      *
      * `YUV_420_888`'s U/V planes are frequently semi-planar on real devices (`pixelStride == 2`,
      * i.e. interleaved like NV21) rather than the fully-planar layout ToxAV needs - [copyPlane]
      * de-interleaves by stepping `pixelStride` bytes at a time when it isn't 1.
      */
-    fun imageProxyToI420(image: ImageProxy, rotationDegrees: Int): I420Frame {
+    fun imageProxyToI420(image: ImageProxy, rotationDegrees: Int, buffers: SendBuffers): I420Frame {
         val srcWidth = image.width
         val srcHeight = image.height
         val planes = image.planes
-
-        val yRaw = ByteArray(srcWidth * srcHeight)
-        copyPlane(planes[0].buffer, planes[0].rowStride, planes[0].pixelStride, srcWidth, srcHeight, yRaw)
-
         val chromaWidth = srcWidth / 2
         val chromaHeight = srcHeight / 2
-        val uRaw = ByteArray(chromaWidth * chromaHeight)
-        val vRaw = ByteArray(chromaWidth * chromaHeight)
-        copyPlane(planes[1].buffer, planes[1].rowStride, planes[1].pixelStride, chromaWidth, chromaHeight, uRaw)
-        copyPlane(planes[2].buffer, planes[2].rowStride, planes[2].pixelStride, chromaWidth, chromaHeight, vRaw)
 
-        val yFinal = rotatePlane(yRaw, srcWidth, srcHeight, rotationDegrees)
-        val uFinal = rotatePlane(uRaw, chromaWidth, chromaHeight, rotationDegrees)
-        val vFinal = rotatePlane(vRaw, chromaWidth, chromaHeight, rotationDegrees)
+        buffers.y = buffers.y.resized(srcWidth * srcHeight)
+        buffers.u = buffers.u.resized(chromaWidth * chromaHeight)
+        buffers.v = buffers.v.resized(chromaWidth * chromaHeight)
+
+        copyPlane(planes[0].buffer, planes[0].rowStride, planes[0].pixelStride, srcWidth, srcHeight, buffers.y)
+        copyPlane(planes[1].buffer, planes[1].rowStride, planes[1].pixelStride, chromaWidth, chromaHeight, buffers.u)
+        copyPlane(planes[2].buffer, planes[2].rowStride, planes[2].pixelStride, chromaWidth, chromaHeight, buffers.v)
+
+        if (rotationDegrees == 0) {
+            return I420Frame(srcWidth, srcHeight, buffers.y, buffers.u, buffers.v)
+        }
+
+        buffers.rotatedY = buffers.rotatedY.resized(srcWidth * srcHeight)
+        buffers.rotatedU = buffers.rotatedU.resized(chromaWidth * chromaHeight)
+        buffers.rotatedV = buffers.rotatedV.resized(chromaWidth * chromaHeight)
+
+        YuvNative.rotatePlane(buffers.y, srcWidth, srcHeight, rotationDegrees, buffers.rotatedY)
+        YuvNative.rotatePlane(buffers.u, chromaWidth, chromaHeight, rotationDegrees, buffers.rotatedU)
+        YuvNative.rotatePlane(buffers.v, chromaWidth, chromaHeight, rotationDegrees, buffers.rotatedV)
 
         val rotated90or270 = rotationDegrees == 90 || rotationDegrees == 270
         val finalWidth = if (rotated90or270) srcHeight else srcWidth
         val finalHeight = if (rotated90or270) srcWidth else srcHeight
 
-        return I420Frame(finalWidth, finalHeight, yFinal, uFinal, vFinal)
+        return I420Frame(finalWidth, finalHeight, buffers.rotatedY, buffers.rotatedU, buffers.rotatedV)
     }
+
+    private fun ByteArray.resized(size: Int): ByteArray = if (this.size == size) this else ByteArray(size)
 
     private fun copyPlane(
         buffer: java.nio.ByteBuffer,
@@ -100,38 +139,14 @@ object YuvFrameConverter {
         }
     }
 
-    private fun rotatePlane(src: ByteArray, width: Int, height: Int, rotationDegrees: Int): ByteArray =
-        when (rotationDegrees) {
-            90 -> ByteArray(width * height).also { dst ->
-                var i = 0
-                for (x in 0 until width) {
-                    for (y in height - 1 downTo 0) {
-                        dst[i++] = src[y * width + x]
-                    }
-                }
-            }
-            180 -> ByteArray(width * height).also { dst ->
-                for (i in src.indices) dst[i] = src[src.size - 1 - i]
-            }
-            270 -> ByteArray(width * height).also { dst ->
-                var i = 0
-                for (x in width - 1 downTo 0) {
-                    for (y in 0 until height) {
-                        dst[i++] = src[y * width + x]
-                    }
-                }
-            }
-            else -> src
-        }
-
     /**
      * Renders a planar YUV420 frame (as delivered by [org.meshly.app.daemontox.ToxDaemonEvent.VideoFrameReceived])
-     * into [target], reallocating it only if [width]/[height] changed since the last call.
-     * `yStride`/`uStride`/`vStride` can be negative for bottom-up source images (see that
-     * event's doc) - only their magnitude is needed here since the byte arrays we're handed are
-     * already laid out row-major forward by the JNI layer (`tox_jni.c`'s `cb_video_receive_frame`).
-     * Standard BT.601 integer YUV->RGB conversion, processed row by row (chroma sampled every
-     * 2x2 luma block).
+     * into [buffers]' reused `Bitmap`/pixel array, reallocating either only if [width]/[height]
+     * changed since the last call. `yStride`/`uStride`/`vStride` can be negative for bottom-up
+     * source images (see that event's doc) - only their magnitude is needed here since the byte
+     * arrays we're handed are already laid out row-major forward by the JNI layer
+     * (`tox_jni.c`'s `cb_video_receive_frame`). BT.601 YUV->RGB conversion runs natively (see
+     * [YuvNative.yuv420ToArgb]'s doc).
      */
     fun renderToBitmap(
         width: Int,
@@ -142,39 +157,23 @@ object YuvFrameConverter {
         yStride: Int,
         uStride: Int,
         vStride: Int,
-        target: Bitmap?
+        buffers: ReceiveBuffers
     ): Bitmap {
-        val bitmap = if (target != null && target.width == width && target.height == height) {
-            target
+        val existing = buffers.bitmap
+        val bitmap = if (existing != null && existing.width == width && existing.height == height) {
+            existing
         } else {
-            target?.recycle()
+            existing?.recycle()
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         }
+        buffers.bitmap = bitmap
 
-        val yRowStride = abs(yStride).coerceAtLeast(width)
-        val uRowStride = abs(uStride).coerceAtLeast(width / 2)
-        val vRowStride = abs(vStride).coerceAtLeast(width / 2)
-
-        val pixels = IntArray(width * height)
-        for (row in 0 until height) {
-            val yRowOffset = row * yRowStride
-            val chromaRow = row / 2
-            val uRowOffset = chromaRow * uRowStride
-            val vRowOffset = chromaRow * vRowStride
-            var outOffset = row * width
-            for (col in 0 until width) {
-                val yValue = (y[yRowOffset + col].toInt() and 0xFF) - 16
-                val uValue = (u[uRowOffset + col / 2].toInt() and 0xFF) - 128
-                val vValue = (v[vRowOffset + col / 2].toInt() and 0xFF) - 128
-
-                val r = ((1192 * yValue + 1634 * vValue) shr 10).coerceIn(0, 255)
-                val g = ((1192 * yValue - 833 * vValue - 400 * uValue) shr 10).coerceIn(0, 255)
-                val b = ((1192 * yValue + 2066 * uValue) shr 10).coerceIn(0, 255)
-
-                pixels[outOffset++] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-            }
+        if (buffers.pixels.size != width * height) {
+            buffers.pixels = IntArray(width * height)
         }
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+
+        YuvNative.yuv420ToArgb(width, height, y, u, v, yStride, uStride, vStride, buffers.pixels)
+        bitmap.setPixels(buffers.pixels, 0, width, 0, 0, width, height)
         return bitmap
     }
 }

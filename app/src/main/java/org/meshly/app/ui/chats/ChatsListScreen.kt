@@ -20,11 +20,8 @@
 
 package org.meshly.app.ui.chats
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,24 +30,19 @@ import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.meshly.app.R
-import org.meshly.app.data.model.Contact
 import org.meshly.app.data.model.ContactStatus
 import org.meshly.app.data.model.PresenceStatus
-import org.meshly.app.ui.components.Avatar
 import org.meshly.app.ui.components.AvatarSize
+import org.meshly.app.ui.components.ContactListItem
 import org.meshly.app.ui.components.EmptyState
-import org.meshly.app.ui.theme.Spacing
+import org.meshly.app.ui.components.MeshlyTopBar
 import org.meshly.app.ui.viewmodel.ContactViewModel
 
 @Composable
@@ -64,7 +56,7 @@ fun ChatsListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.chats_title)) }) }
+        topBar = { MeshlyTopBar(title = stringResource(R.string.chats_title)) }
     ) { padding ->
         if (conversations.isEmpty()) {
             EmptyState(
@@ -73,43 +65,22 @@ fun ChatsListScreen(
                 modifier = Modifier.padding(padding)
             )
         } else {
+            val onlineDesc = stringResource(R.string.content_desc_online)
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(conversations, key = { it.toxId }) { contact ->
                     Column(modifier = Modifier.animateItem()) {
-                        ConversationRow(contact) { onOpenChat(contact.toxId, contact.displayName) }
+                        ContactListItem(
+                            displayName = contact.displayName,
+                            toxId = contact.toxId,
+                            avatarSize = AvatarSize.Medium,
+                            showOnlineIndicator = contact.presence == PresenceStatus.ONLINE,
+                            onlineContentDescription = onlineDesc,
+                            onClick = { onOpenChat(contact.toxId, contact.displayName) }
+                        )
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ConversationRow(contact: Contact, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Avatar(
-            name = contact.displayName,
-            seed = contact.toxId,
-            size = AvatarSize.Medium,
-            showOnlineIndicator = contact.presence == PresenceStatus.ONLINE,
-            onlineContentDescription = stringResource(R.string.content_desc_online)
-        )
-        Column(modifier = Modifier.padding(start = Spacing.md)) {
-            Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(
-                contact.toxId,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
