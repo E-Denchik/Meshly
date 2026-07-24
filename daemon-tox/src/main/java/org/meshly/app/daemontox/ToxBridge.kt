@@ -179,6 +179,14 @@ object ToxBridge {
     fun callControl(friendNumber: Int, control: Int): Boolean =
         ToxNative.toxavCallControl(requireAvHandle(), friendNumber, control)
 
+    /** See [ToxNative.toxavAudioSetBitRate]'s doc. */
+    fun setAudioBitRate(friendNumber: Int, bitRateKbps: Int): Boolean =
+        ToxNative.toxavAudioSetBitRate(requireAvHandle(), friendNumber, bitRateKbps)
+
+    /** See [ToxNative.toxavVideoSetBitRate]'s doc. */
+    fun setVideoBitRate(friendNumber: Int, bitRateKbps: Int): Boolean =
+        ToxNative.toxavVideoSetBitRate(requireAvHandle(), friendNumber, bitRateKbps)
+
     /** See [ToxNative.toxavAudioSendFrame]'s doc. */
     fun sendAudioFrame(friendNumber: Int, pcm: ShortArray, sampleCount: Int, channels: Int, samplingRate: Int): Boolean =
         ToxNative.toxavAudioSendFrame(requireAvHandle(), friendNumber, pcm, sampleCount, channels, samplingRate)

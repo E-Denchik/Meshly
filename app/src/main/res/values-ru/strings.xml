@@ -25,6 +25,7 @@
     <string name="call_state_connecting">Подключение…</string>
     <string name="call_state_connected">Соединено</string>
     <string name="call_state_ended">Звонок завершён</string>
+    <string name="call_already_in_progress">Вы уже разговариваете по другому звонку</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">Входящий аудиозвонок</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">Включить/выключить микрофон</string>
+    <string name="content_desc_toggle_speaker">Включить/выключить громкую связь</string>
     <string name="content_desc_toggle_camera">Включить/выключить камеру</string>
     <string name="content_desc_flip_camera">Переключить камеру</string>
     <string name="content_desc_hang_up">Завершить звонок</string>

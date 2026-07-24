@@ -21,49 +21,31 @@
 package org.meshly.app.ui.viewmodel
 
 import android.app.Application
-import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.data.model.CallSession
 import org.meshly.app.data.model.CallType
-import org.meshly.app.service.CallService
 
+/**
+ * Thin pass-through to [org.meshly.app.data.repository.CallRepository] - the repository (an
+ * app-lifetime singleton) owns the call's foreground-service notification lifecycle directly,
+ * since it's the only thing guaranteed to be around for every way a call can end, including a
+ * remote hangup/error that never goes through any of this ViewModel's methods.
+ */
 class CallViewModel(application: Application) : AndroidViewModel(application) {
     private val callRepository = (application as MeshlyApplication).callRepository
     val activeCall: StateFlow<CallSession?> = callRepository.activeCall
 
-    suspend fun placeCall(peerToxId: String, peerDisplayName: String, type: CallType): CallSession {
-        val session = callRepository.placeCall(peerToxId, peerDisplayName, type)
-        startCallService(session)
-        return session
-    }
+    /** `null` means a call was already active and nothing was placed - see
+     *  [org.meshly.app.data.repository.CallRepository.placeCall]'s doc for why. */
+    suspend fun placeCall(peerToxId: String, peerDisplayName: String, type: CallType): CallSession? =
+        callRepository.placeCall(peerToxId, peerDisplayName, type)
 
-    fun acceptCall(callId: String) {
-        callRepository.acceptCall(callId)
-        activeCall.value?.let { startCallService(it) }
-    }
-
-    fun hangUpCall(callId: String) {
-        callRepository.hangUpCall(callId)
-        stopCallService()
-    }
-
+    fun acceptCall(callId: String) = callRepository.acceptCall(callId)
+    fun hangUpCall(callId: String) = callRepository.hangUpCall(callId)
     fun toggleMute() = callRepository.toggleMute()
+    fun toggleSpeaker() = callRepository.toggleSpeaker()
     fun toggleCamera() = callRepository.toggleCamera()
     fun flipCamera() = callRepository.flipCamera()
-
-    private fun startCallService(session: CallSession) {
-        val context = getApplication<Application>()
-        val intent = Intent(context, CallService::class.java).apply {
-            putExtra(CallService.EXTRA_PEER_NAME, session.peerDisplayName)
-            putExtra(CallService.EXTRA_CALL_TYPE, session.callType.name)
-        }
-        context.startForegroundService(intent)
-    }
-
-    private fun stopCallService() {
-        val context = getApplication<Application>()
-        context.stopService(Intent(context, CallService::class.java))
-    }
 }

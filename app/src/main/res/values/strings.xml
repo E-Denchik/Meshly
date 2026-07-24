@@ -25,6 +25,7 @@
     <string name="call_state_connecting">Connecting…</string>
     <string name="call_state_connected">Connected</string>
     <string name="call_state_ended">Call ended</string>
+    <string name="call_already_in_progress">You\'re already on a call</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">Incoming audio call</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">Toggle mute</string>
+    <string name="content_desc_toggle_speaker">Toggle speaker</string>
     <string name="content_desc_toggle_camera">Toggle camera</string>
     <string name="content_desc_flip_camera">Flip camera</string>
     <string name="content_desc_hang_up">Hang up</string>

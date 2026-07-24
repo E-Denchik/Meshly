@@ -115,7 +115,12 @@ class ToxDaemonService : Service() {
     }
 
     private suspend fun showIncomingCallFullScreenIntent(event: ToxDaemonEvent.CallInviteReceived) {
-        val contactDao = (applicationContext as MeshlyApplication).database.contactDao()
+        val app = applicationContext as MeshlyApplication
+        // CallRepository rejects (CONTROL_CANCEL) any invite that arrives while a call is
+        // already active rather than accepting it - mirror that decision here so a second
+        // IncomingCallActivity never pops on top of the call already in progress.
+        if (app.callRepository.activeCall.value != null) return
+        val contactDao = app.database.contactDao()
         val contact = contactDao.getContactByFriendNumber(event.friendNumber) ?: return
         val callId = event.friendNumber.toString()
         val callType = if (event.videoEnabled) CallType.VIDEO else CallType.AUDIO

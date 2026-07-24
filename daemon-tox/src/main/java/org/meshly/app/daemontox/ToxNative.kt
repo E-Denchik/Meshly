@@ -237,6 +237,24 @@ internal object ToxNative {
     external fun toxavCallControl(avHandle: Long, friendNumber: Int, control: Int): Boolean
 
     /**
+     * `bool toxav_audio_set_bit_rate(ToxAV *av, Tox_Friend_Number
+     * friend_number, uint32_t bit_rate, Toxav_Err_Bit_Rate_Set *error);`
+     * (toxav.h line 626, confirmed). Applies a bit rate ToxAV itself
+     * suggested via [ToxCallbackAdapter.onAudioBitRate] in response to real
+     * measured network conditions - not a fixed value chosen once at
+     * [toxavCall]/[toxavAnswer] time.
+     */
+    external fun toxavAudioSetBitRate(avHandle: Long, friendNumber: Int, bitRate: Int): Boolean
+
+    /**
+     * `bool toxav_video_set_bit_rate(ToxAV *av, Tox_Friend_Number
+     * friend_number, uint32_t bit_rate, Toxav_Err_Bit_Rate_Set *error);`
+     * (toxav.h line 677, confirmed). Same as [toxavAudioSetBitRate] but for
+     * video, driven by [ToxCallbackAdapter.onVideoBitRate].
+     */
+    external fun toxavVideoSetBitRate(avHandle: Long, friendNumber: Int, bitRate: Int): Boolean
+
+    /**
      * `bool toxav_audio_send_frame(ToxAV *av, Tox_Friend_Number
      * friend_number, const int16_t pcm[], size_t sample_count, uint8_t
      * channels, uint32_t sampling_rate, Toxav_Err_Send_Frame *error);`

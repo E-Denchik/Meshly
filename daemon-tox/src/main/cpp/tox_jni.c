@@ -727,6 +727,38 @@ Java_org_meshly_app_daemontox_ToxNative_toxavCallControl(
 }
 
 /*
+ * Java_org_meshly_app_daemontox_ToxNative_toxavAudioSetBitRate
+ * Wraps `bool toxav_audio_set_bit_rate(ToxAV *av, Tox_Friend_Number
+ * friend_number, uint32_t bit_rate, Toxav_Err_Bit_Rate_Set *error);`
+ * (toxav.h line 626).
+ */
+JNIEXPORT jboolean JNICALL
+Java_org_meshly_app_daemontox_ToxNative_toxavAudioSetBitRate(
+    JNIEnv *env, jobject thiz, jlong avHandle, jint friendNumber, jint bitRate) {
+    (void) env;
+    (void) thiz;
+    ToxAV *av = (ToxAV *) (intptr_t) avHandle;
+    Toxav_Err_Bit_Rate_Set error;
+    return (jboolean) toxav_audio_set_bit_rate(av, (uint32_t) friendNumber, (uint32_t) bitRate, &error);
+}
+
+/*
+ * Java_org_meshly_app_daemontox_ToxNative_toxavVideoSetBitRate
+ * Wraps `bool toxav_video_set_bit_rate(ToxAV *av, Tox_Friend_Number
+ * friend_number, uint32_t bit_rate, Toxav_Err_Bit_Rate_Set *error);`
+ * (toxav.h line 677).
+ */
+JNIEXPORT jboolean JNICALL
+Java_org_meshly_app_daemontox_ToxNative_toxavVideoSetBitRate(
+    JNIEnv *env, jobject thiz, jlong avHandle, jint friendNumber, jint bitRate) {
+    (void) env;
+    (void) thiz;
+    ToxAV *av = (ToxAV *) (intptr_t) avHandle;
+    Toxav_Err_Bit_Rate_Set error;
+    return (jboolean) toxav_video_set_bit_rate(av, (uint32_t) friendNumber, (uint32_t) bitRate, &error);
+}
+
+/*
  * Java_org_meshly_app_daemontox_ToxNative_toxavAudioSendFrame
  * Wraps `bool toxav_audio_send_frame(ToxAV *av, Tox_Friend_Number
  * friend_number, const int16_t pcm[], size_t sample_count, uint8_t

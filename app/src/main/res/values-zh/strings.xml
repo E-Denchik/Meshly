@@ -25,6 +25,7 @@
     <string name="call_state_connecting">正在连接…</string>
     <string name="call_state_connected">已连接</string>
     <string name="call_state_ended">通话已结束</string>
+    <string name="call_already_in_progress">您已经在通话中</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">语音来电</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">切换静音</string>
+    <string name="content_desc_toggle_speaker">切换扬声器</string>
     <string name="content_desc_toggle_camera">切换摄像头开关</string>
     <string name="content_desc_flip_camera">切换前后摄像头</string>
     <string name="content_desc_hang_up">挂断</string>

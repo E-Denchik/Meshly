@@ -40,6 +40,7 @@ data class CallSession(
     val callType: CallType,
     val state: CallState,
     val isMuted: Boolean = false,
+    val isSpeakerOn: Boolean = false,
     val isCameraOn: Boolean = true,
     val isFrontCamera: Boolean = true,
     val startTime: Long = System.currentTimeMillis()
