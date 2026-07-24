@@ -24,6 +24,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Cameraswitch
@@ -49,19 +52,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.camera.view.PreviewView
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.delay
-import kotlin.random.Random
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.meshly.app.R
 import org.meshly.app.data.model.CallState
 import org.meshly.app.data.model.CallType
+import org.meshly.app.media.VideoCallSession
 import org.meshly.app.ui.components.Avatar
 import org.meshly.app.ui.components.AvatarSize
 import org.meshly.app.ui.theme.CallSurfaceColors
@@ -81,15 +92,11 @@ fun CallScreen(
 
     LaunchedEffect(peerToxId) {
         if (isOutgoing) {
-            val session = viewModel.placeCall(peerToxId, peerDisplayName, callType)
-            // Mock stage: no real peer signaling yet, simulate the callee either answering
-            // or not picking up, so the UI can be exercised end-to-end without native toxcore/ToxAV.
-            delay(Random.nextLong(1200, 3000))
-            if (Random.nextFloat() < 0.85f) {
-                viewModel.acceptCall(session.callId)
-            } else {
-                viewModel.hangUpCall(session.callId)
-            }
+            viewModel.placeCall(peerToxId, peerDisplayName, callType)
+            // Real signaling from here: toxav_call() was just sent by placeCall(), and
+            // activeCall.state transitions (DIALING -> CONNECTED/ENDED) come from the peer's
+            // real answer/reject via CallRepository's CallInviteReceived/CallStateChanged
+            // handling - nothing simulated here anymore.
         }
     }
 
@@ -100,6 +107,27 @@ fun CallScreen(
     }
 
     val session = activeCall
+    val friendNumber = session?.callId?.toIntOrNull()
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val videoSession = remember(friendNumber) {
+        if (callType == CallType.VIDEO && friendNumber != null) {
+            VideoCallSession(context, lifecycleOwner, friendNumber)
+        } else {
+            null
+        }
+    }
+    DisposableEffect(videoSession) {
+        onDispose { videoSession?.stop() }
+    }
+    LaunchedEffect(session?.isCameraOn) {
+        videoSession?.setCameraEnabled(session?.isCameraOn == true)
+    }
+
+    val remoteFrameFlow = remember(videoSession) { videoSession?.remoteFrame ?: MutableStateFlow(null) }
+    val remoteFrame by remoteFrameFlow.collectAsStateWithLifecycle()
+
     Scaffold { padding ->
         Box(
             modifier = Modifier
@@ -112,43 +140,86 @@ fun CallScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val showsVideoPlaceholder = callType == CallType.VIDEO && session?.isCameraOn == true
-                    if (!showsVideoPlaceholder) {
-                        Avatar(name = peerDisplayName, seed = peerToxId, size = AvatarSize.Large)
-                        Spacer(Modifier.height(Spacing.xl))
-                    }
+                    val showingRemoteVideo = callType == CallType.VIDEO && remoteFrame != null
 
-                    Text(
-                        peerDisplayName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = CallSurfaceColors.onSurface
-                    )
-                    AnimatedContent(
-                        targetState = session?.state,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "call-state-label"
-                    ) { state ->
-                        Text(
-                            callStateLabel(state),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = CallSurfaceColors.onSurfaceMuted
+                    if (showingRemoteVideo) {
+                        Image(
+                            bitmap = remoteFrame!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize()
                         )
+                        Column(
+                            modifier = Modifier.align(Alignment.TopStart).padding(Spacing.lg),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text(peerDisplayName, style = MaterialTheme.typography.titleMedium, color = CallSurfaceColors.onSurface)
+                            Text(callStateLabel(session?.state), style = MaterialTheme.typography.bodySmall, color = CallSurfaceColors.onSurfaceMuted)
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Avatar(name = peerDisplayName, seed = peerToxId, size = AvatarSize.Large)
+                            Spacer(Modifier.height(Spacing.xl))
+                            Text(
+                                peerDisplayName,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = CallSurfaceColors.onSurface
+                            )
+                            Spacer(Modifier.height(Spacing.sm))
+                            AnimatedContent(
+                                targetState = session?.state,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "call-state-label"
+                            ) { state ->
+                                Text(
+                                    callStateLabel(state),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = CallSurfaceColors.onSurfaceMuted
+                                )
+                            }
+                            if (callType == CallType.VIDEO && session?.state == CallState.CONNECTED) {
+                                Spacer(Modifier.height(Spacing.lg))
+                                Text(
+                                    stringResource(R.string.video_preview_placeholder),
+                                    color = CallSurfaceColors.onSurfaceFaint
+                                )
+                            }
+                        }
                     }
 
-                    if (showsVideoPlaceholder) {
+                    if (callType == CallType.VIDEO && friendNumber != null) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.lg),
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Spacing.md)
+                                .size(width = 100.dp, height = 140.dp)
+                                .clip(RoundedCornerShape(12.dp))
                         ) {
-                            Text(
-                                stringResource(R.string.video_preview_placeholder),
-                                color = CallSurfaceColors.onSurfaceFaint
+                            AndroidView(
+                                factory = { ctx ->
+                                    PreviewView(ctx).also { previewView ->
+                                        videoSession?.start(previewView, frontCamera = session?.isFrontCamera != false)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
                             )
+                            if (session?.isCameraOn == false) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(CallSurfaceColors.background.copy(alpha = 0.85f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.VideocamOff,
+                                        contentDescription = stringResource(R.string.content_desc_local_camera_preview),
+                                        tint = CallSurfaceColors.onSurfaceMuted
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -171,7 +242,10 @@ fun CallScreen(
                                 contentDescription = stringResource(R.string.content_desc_toggle_camera)
                             )
                         }
-                        FilledTonalIconButton(onClick = { viewModel.flipCamera() }) {
+                        FilledTonalIconButton(onClick = {
+                            viewModel.flipCamera()
+                            videoSession?.flipCamera()
+                        }) {
                             Icon(Icons.Filled.Cameraswitch, contentDescription = stringResource(R.string.content_desc_flip_camera))
                         }
                     }

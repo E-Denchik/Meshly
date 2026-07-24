@@ -20,6 +20,7 @@
 
 package org.meshly.app.data.repository
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,6 +36,7 @@ import org.meshly.app.data.local.ContactDao
 import org.meshly.app.data.model.CallSession
 import org.meshly.app.data.model.CallState
 import org.meshly.app.data.model.CallType
+import org.meshly.app.media.AudioCallEngine
 
 /**
  * Real ToxAV-backed call repository: call *signaling* (ring, accept/reject, connect/end state)
@@ -43,14 +45,23 @@ import org.meshly.app.data.model.CallType
  * [org.meshly.app.data.model.CallSession] only ever needs to track one call at a time so this is
  * simpler than inventing a separate UUID-per-call scheme.
  *
- * NOT wired in this pass: real microphone/camera capture -> [ToxBridge.sendAudioFrame]/
- * [ToxBridge.sendVideoFrame], or [ToxDaemonEvent.AudioFrameReceived]/[ToxDaemonEvent.VideoFrameReceived]
- * -> speaker/screen playback. That's a full separate `AudioRecord`/`Camera2`/`AudioTrack` media
- * pipeline, out of scope for this pass - the call connects for real (both peers see CONNECTED),
- * but no live audio/video payload flows yet.
+ * Owns [AudioCallEngine] (mic capture -> [ToxBridge.sendAudioFrame], speaker playback <-
+ * [ToxDaemonEvent.AudioFrameReceived]) headlessly at the repository level, started/stopped with
+ * the call itself rather than tied to any screen - a real phone call must keep carrying audio
+ * even with the screen off. Video capture/rendering is deliberately NOT here: it's owned by
+ * [org.meshly.app.ui.call.CallScreen] itself (see [org.meshly.app.media.VideoCallSession]'s doc
+ * for why - it needs a visible surface for local self-preview, so there's no "video call with
+ * the screen off" case to support, unlike audio).
+ *
+ * This class must be a single app-lifetime instance (see [org.meshly.app.MeshlyApplication]'s
+ * `callRepository`), not constructed fresh per-`ViewModel` - otherwise a `CallInviteReceived`
+ * event fired by [org.meshly.app.service.ToxDaemonService] before this repository's
+ * [ToxBridge.events] subscription exists is lost (no replay buffer), leaving [_activeCall] null
+ * when the user taps Accept and making [acceptCall] silently no-op.
  */
-class CallRepository(private val contactDao: ContactDao) {
+class CallRepository(context: Context, private val contactDao: ContactDao) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val audioEngine = AudioCallEngine(context.applicationContext)
 
     private val _activeCall = MutableStateFlow<CallSession?>(null)
     val activeCall: StateFlow<CallSession?> = _activeCall.asStateFlow()
@@ -78,9 +89,19 @@ class CallRepository(private val contactDao: ContactDao) {
                 if (current.callId != event.friendNumber.toString()) return
                 val bitmask = event.stateBitmask
                 when {
-                    bitmask and (STATE_ERROR or STATE_FINISHED) != 0 -> _activeCall.value = null
-                    bitmask and (STATE_SENDING_A or STATE_SENDING_V or STATE_ACCEPTING_A or STATE_ACCEPTING_V) != 0 ->
+                    bitmask and (STATE_ERROR or STATE_FINISHED) != 0 -> {
+                        _activeCall.value = null
+                        audioEngine.stop()
+                    }
+                    bitmask and (STATE_SENDING_A or STATE_SENDING_V or STATE_ACCEPTING_A or STATE_ACCEPTING_V) != 0 -> {
+                        // AudioCallEngine.start() is idempotent (no-ops if already running), so
+                        // this is safe to call again even if acceptCall() already started it
+                        // optimistically - this branch is what covers the *outgoing*-call path,
+                        // where nothing else starts it before the peer actually answers.
+                        audioEngine.start(event.friendNumber, defaultSpeakerphoneOn = current.callType == CallType.VIDEO)
+                        audioEngine.setMuted(current.isMuted)
                         _activeCall.value = current.copy(state = CallState.CONNECTED)
+                    }
                     else -> Unit
                 }
             }
@@ -108,6 +129,7 @@ class CallRepository(private val contactDao: ContactDao) {
         val friendNumber = callId.toIntOrNull() ?: return
         val current = _activeCall.value ?: return
         ToxBridge.answer(friendNumber, AUDIO_BIT_RATE, if (current.callType == CallType.VIDEO) VIDEO_BIT_RATE else 0)
+        audioEngine.start(friendNumber, defaultSpeakerphoneOn = current.callType == CallType.VIDEO)
         _activeCall.value = current.copy(state = CallState.CONNECTED)
     }
 
@@ -115,6 +137,7 @@ class CallRepository(private val contactDao: ContactDao) {
         callId.toIntOrNull()?.let { friendNumber ->
             runCatching { ToxBridge.callControl(friendNumber, CONTROL_CANCEL) }
         }
+        audioEngine.stop()
         _activeCall.value = null
     }
 
@@ -123,6 +146,7 @@ class CallRepository(private val contactDao: ContactDao) {
         val friendNumber = current.callId.toIntOrNull() ?: return current.isMuted
         val nowMuted = !current.isMuted
         ToxBridge.callControl(friendNumber, if (nowMuted) CONTROL_MUTE_AUDIO else CONTROL_UNMUTE_AUDIO)
+        audioEngine.setMuted(nowMuted)
         _activeCall.value = current.copy(isMuted = nowMuted)
         return nowMuted
     }

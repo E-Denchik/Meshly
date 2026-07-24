@@ -17,6 +17,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- Needed so CallService's foreground service alone (no visible Activity required) can
+         keep AudioRecord/AudioTrack running on API 34+, which restricts mic access from
+         background apps unless a foreground service declares this type - see
+         AudioCallEngine.kt's doc for why audio must survive the screen turning off. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -71,7 +76,7 @@
             android:name=".service.CallService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="phoneCall" />
+            android:foregroundServiceType="phoneCall|microphone" />
 
         <!-- Used to share exported diagnostic log files with other apps (Settings > Diagnostics). -->
         <provider

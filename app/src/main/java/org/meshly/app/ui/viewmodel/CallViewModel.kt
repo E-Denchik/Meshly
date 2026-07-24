@@ -27,11 +27,10 @@ import kotlinx.coroutines.flow.StateFlow
 import org.meshly.app.MeshlyApplication
 import org.meshly.app.data.model.CallSession
 import org.meshly.app.data.model.CallType
-import org.meshly.app.data.repository.CallRepository
 import org.meshly.app.service.CallService
 
 class CallViewModel(application: Application) : AndroidViewModel(application) {
-    private val callRepository = CallRepository((application as MeshlyApplication).database.contactDao())
+    private val callRepository = (application as MeshlyApplication).callRepository
     val activeCall: StateFlow<CallSession?> = callRepository.activeCall
 
     suspend fun placeCall(peerToxId: String, peerDisplayName: String, type: CallType): CallSession {

@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">Activer/désactiver la caméra</string>
     <string name="content_desc_flip_camera">Changer de caméra</string>
     <string name="content_desc_hang_up">Raccrocher</string>
-    <string name="video_preview_placeholder">Aperçu vidéo (Phase 2 : sortie vidéo ToxAV)</string>
+    <string name="video_preview_placeholder">En attente de la vidéo…</string>
+    <string name="content_desc_local_camera_preview">Aperçu de votre caméra</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Discussions</string>

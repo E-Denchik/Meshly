@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">Kamerayı aç/kapat</string>
     <string name="content_desc_flip_camera">Kamerayı değiştir</string>
     <string name="content_desc_hang_up">Aramayı sonlandır</string>
-    <string name="video_preview_placeholder">Video önizleme yüzeyi (2. Aşama: ToxAV video çıkışı)</string>
+    <string name="video_preview_placeholder">Video bekleniyor…</string>
+    <string name="content_desc_local_camera_preview">Kameranızın önizlemesi</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Sohbetler</string>

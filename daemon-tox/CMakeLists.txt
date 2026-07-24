@@ -15,6 +15,34 @@ set(ENV{PKG_CONFIG_LIBDIR} "${CMAKE_CURRENT_SOURCE_DIR}/deps/${ANDROID_ABI}/lib/
 set(ENV{PKG_CONFIG_PATH} "")
 set(ENV{PKG_CONFIG_SYSROOT_DIR} "")
 
+# Local patch on top of the pinned upstream commit: c-toxcore's iterate_common()
+# (toxav/toxav.c) kills an active call the instant tox_friend_get_connection_status() reports
+# the friend offline, with zero grace period -- verified live between two real devices that a
+# momentary DHT/UDP reconnect blip during an active audio/video call was enough to instantly
+# end an otherwise-healthy call. The submodule itself can't carry a durable fix (this repo
+# doesn't control the upstream remote, so a local commit inside it wouldn't survive a fresh
+# clone/CI checkout) -- applying a tracked .patch file at configure time does. Idempotent:
+# `git apply --reverse --check` succeeding means the patch is already applied (e.g. a second
+# configure run without a fresh submodule checkout in between), so it's skipped rather than
+# re-applied.
+execute_process(
+    COMMAND git apply --reverse --check ${CMAKE_CURRENT_SOURCE_DIR}/../native/patches/0001-toxav-call-offline-grace-period.patch
+    WORKING_DIRECTORY ${TOXCORE_DIR}
+    RESULT_VARIABLE TOXAV_GRACE_PERIOD_PATCH_APPLIED
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(NOT TOXAV_GRACE_PERIOD_PATCH_APPLIED EQUAL 0)
+    execute_process(
+        COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/../native/patches/0001-toxav-call-offline-grace-period.patch
+        WORKING_DIRECTORY ${TOXCORE_DIR}
+        RESULT_VARIABLE TOXAV_GRACE_PERIOD_PATCH_APPLY_RESULT
+    )
+    if(NOT TOXAV_GRACE_PERIOD_PATCH_APPLY_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to apply native/patches/0001-toxav-call-offline-grace-period.patch to ${TOXCORE_DIR}")
+    endif()
+endif()
+
 # c-toxcore's own top-level CMakeLists.txt (TOXCORE_DIR/CMakeLists.txt) builds
 # ONE merged library containing toxcore + toxav + toxencryptsave together
 # (confirmed: c-toxcore/INSTALL.md's component table says "at the moment,

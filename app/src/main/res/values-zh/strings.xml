@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">切换摄像头开关</string>
     <string name="content_desc_flip_camera">切换前后摄像头</string>
     <string name="content_desc_hang_up">挂断</string>
-    <string name="video_preview_placeholder">视频预览区域(第二阶段:ToxAV 视频输出)</string>
+    <string name="video_preview_placeholder">等待视频…</string>
+    <string name="content_desc_local_camera_preview">您的摄像头预览</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">聊天</string>

@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">Включить/выключить камеру</string>
     <string name="content_desc_flip_camera">Переключить камеру</string>
     <string name="content_desc_hang_up">Завершить звонок</string>
-    <string name="video_preview_placeholder">Область предпросмотра видео (Фаза 2: видеовывод ToxAV)</string>
+    <string name="video_preview_placeholder">Ожидание видео…</string>
+    <string name="content_desc_local_camera_preview">Предпросмотр вашей камеры</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Чаты</string>

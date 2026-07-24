@@ -1,0 +1,64 @@
+diff --git a/toxav/toxav.c b/toxav/toxav.c
+index 3ef9fa89..ef47794c 100644
+--- a/toxav/toxav.c
++++ b/toxav/toxav.c
+@@ -31,6 +31,14 @@
+ // iteration interval that is used when no call is active
+ #define IDLE_ITERATION_INTERVAL_MS 1000
+ 
++// How long a call's friend connection may report TOX_CONNECTION_NONE before the call is
++// actually torn down. tox_friend_get_connection_status() can flap briefly (DHT/UDP keepalive
++// jitter under the extra bandwidth/CPU load of an active audio/video call) without the peer
++// having genuinely gone away; killing the call on the very first offline observation treated a
++// momentary blip the same as a real disconnect. This grace period lets iterate_common() ride
++// out a brief reconnect instead.
++#define CALL_OFFLINE_GRACE_PERIOD_MS 10000
++
+ typedef struct ToxAVCall ToxAVCall;
+ 
+ static ToxAVCall *_Nullable call_get(ToxAV *_Nonnull av, uint32_t friend_number);
+@@ -54,6 +62,10 @@ struct ToxAVCall {
+     MSICall *_Nullable msi_call;
+     Tox_Friend_Number friend_number;
+ 
++    /** Monotonic timestamp of when this call's friend connection was first observed offline
++     *  (TOX_CONNECTION_NONE), or 0 if currently online - see CALL_OFFLINE_GRACE_PERIOD_MS. */
++    uint64_t offline_since_mono;
++
+     uint32_t audio_bit_rate; /* Sending audio bit rate */
+     uint32_t video_bit_rate; /* Sending video bit rate */
+ 
+@@ -528,13 +540,30 @@ static void iterate_common(ToxAV *_Nonnull av, bool audio)
+         const bool is_offline = tox_friend_get_connection_status(av->tox, fid, &f_con_query_error) == TOX_CONNECTION_NONE;
+ 
+         if (is_offline) {
+-            MSISession *session = i->msi_call->session;
++            if (i->offline_since_mono == 0) {
++                i->offline_since_mono = start;
++            } else if (start - i->offline_since_mono >= CALL_OFFLINE_GRACE_PERIOD_MS) {
++                MSISession *session = i->msi_call->session;
++                pthread_mutex_unlock(i->toxav_call_mutex);
++                msi_call_timeout(session, av->log, fid);
++                pthread_mutex_lock(av->mutex);
++                break;
++            }
++
++            /* Still within the grace period: skip this call's audio/video iteration (nothing
++             * will arrive while offline anyway) but keep it alive instead of tearing it down. */
+             pthread_mutex_unlock(i->toxav_call_mutex);
+-            msi_call_timeout(session, av->log, fid);
+             pthread_mutex_lock(av->mutex);
+-            break;
++
++            if (call_get(av, fid) != i) {
++                break;
++            }
++
++            continue;
+         }
+ 
++        i->offline_since_mono = 0;
++
+         if (audio) {
+             ac_iterate(i->audio);
+ 

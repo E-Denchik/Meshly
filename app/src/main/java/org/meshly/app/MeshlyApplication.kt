@@ -26,6 +26,7 @@ import android.app.NotificationManager
 import android.os.Build
 import org.meshly.app.daemontox.ToxBridge
 import org.meshly.app.data.local.AppDatabase
+import org.meshly.app.data.repository.CallRepository
 import org.meshly.app.data.repository.ChatRepository
 import org.meshly.app.data.repository.ContactRepository
 import org.meshly.app.data.repository.ToxSavedataStore
@@ -36,20 +37,24 @@ class MeshlyApplication : Application() {
 
     /**
      * App-process-lifetime singletons, not per-screen instances. [ChatRepository]/
-     * [ContactRepository] each subscribe to [ToxBridge.events] in their `init` block to persist
-     * incoming messages/friend requests - that subscription has to exist for as long as the
-     * daemon can receive events, not just while the matching screen happens to be on-screen.
-     * Constructing a fresh repository per-ViewModel (the original shape here) meant an incoming
-     * message or friend request arriving while the user was on some other screen was emitted to
-     * a `MutableSharedFlow` with zero subscribers and silently lost forever - verified live: a
-     * real message showed delivered+read on the sender's side (that ack is automatic at the Tox
-     * core level, independent of the app) but never appeared in the recipient's chat history
-     * because no [ChatRepository] instance was alive to store it. Held here instead so both
-     * ViewModels share the one instance created at first access and kept alive by the
-     * Application object itself.
+     * [ContactRepository]/[CallRepository] each subscribe to [ToxBridge.events] in their `init`
+     * block to persist incoming messages/friend requests/calls - that subscription has to exist
+     * for as long as the daemon can receive events, not just while the matching screen happens
+     * to be on-screen. Constructing a fresh repository per-ViewModel (the original shape here)
+     * meant an incoming message or friend request arriving while the user was on some other
+     * screen was emitted to a `MutableSharedFlow` with zero subscribers and silently lost
+     * forever - verified live: a real message showed delivered+read on the sender's side (that
+     * ack is automatic at the Tox core level, independent of the app) but never appeared in the
+     * recipient's chat history because no [ChatRepository] instance was alive to store it. The
+     * same bug applied to [CallRepository]: a `CallInviteReceived` event fired by
+     * `ToxDaemonService` (which launches `IncomingCallActivity` independently) before a fresh
+     * per-Activity `CallRepository` existed meant `acceptCall()` had no session to act on and
+     * silently no-opped. Held here instead so every ViewModel/Activity shares the one instance
+     * created at first access and kept alive by the Application object itself.
      */
     val chatRepository by lazy { ChatRepository(database.chatMessageDao(), database.contactDao()) }
     val contactRepository by lazy { ContactRepository(this, database.contactDao()) }
+    val callRepository by lazy { CallRepository(this, database.contactDao()) }
 
     override fun onCreate() {
         super.onCreate()
@@ -66,6 +71,7 @@ class MeshlyApplication : Application() {
         // why an event arriving before the subscription exists is lost, not just delayed.
         chatRepository
         contactRepository
+        callRepository
     }
 
     private fun createNotificationChannels() {

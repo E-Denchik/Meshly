@@ -16,6 +16,7 @@ robolectric = "4.13"
 androidxTestCore = "1.6.1"
 zxingCore = "3.5.3"
 zxingEmbedded = "4.3.0"
+cameraX = "1.5.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -53,6 +54,12 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "an
 # QR code (Tox ID scan/generate)
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
+
+# CameraX (call video capture/preview)
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

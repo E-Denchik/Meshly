@@ -65,6 +65,29 @@ caught, since they only show up against a live network and a second device:
   them were being re-created per screen instead of living for the app's process
   lifetime. They're now app-scoped singletons, constructed once at process start.
 
+A later pass built the actual audio/video media pipeline (mic/camera capture and
+speaker/screen playback around the already-working call signaling — see
+[`AudioCallEngine`](app/src/main/java/org/meshly/app/media/AudioCallEngine.kt)/
+[`VideoCallSession`](app/src/main/java/org/meshly/app/media/VideoCallSession.kt)) and
+verified it the same way: a real audio+video call between the same two devices, both
+sides showing the other's live camera feed and exchanging real voice, confirmed via
+screen capture on both ends. That pass caught two more real, only-live-visible bugs:
+
+- **`CallRepository` had the identical "recreated per screen" bug** described above for
+  chat/contacts — an incoming `CallInviteReceived` event fired before `IncomingCallActivity`'s
+  fresh `CallViewModel`/`CallRepository` existed, so `acceptCall()` had no session to act
+  on and silently no-opped. Fixed the same way: an app-scoped singleton.
+- **A real, healthy call could drop after 25-50 seconds with no error, no crash, and no
+  network outage visible at the OS/Wi-Fi level.** Traced into c-toxcore itself:
+  `toxav.c`'s `iterate_common()` ends a call the instant `tox_friend_get_connection_status()`
+  reports the friend offline, with zero grace period — a momentary DHT/UDP keepalive blip
+  (plausibly from the extra bandwidth/CPU load of a real audio+video stream) was enough to
+  kill an otherwise-fine call outright. Fixed via
+  [`native/patches/0001-toxav-call-offline-grace-period.patch`](native/patches/0001-toxav-call-offline-grace-period.patch)
+  (a 10-second grace period before actually tearing the call down — see "Project layout"
+  above for why this is a patch file, not a submodule commit); re-verified live, the same
+  two-device call then ran well past two minutes.
+
 ## Architecture
 
 Three layers, top to bottom:
@@ -141,6 +164,13 @@ daemon-tox/                   Real c-toxcore/ToxAV native module, wired into :ap
 
 native/upstream/c-toxcore/    Git submodule: real c-toxcore/ToxAV source, actually built
                                (not just a reference) as daemon-tox's native dependency
+native/patches/                Local patches applied to that submodule at CMake-configure
+                                time (daemon-tox/CMakeLists.txt, idempotent via `git apply
+                                --reverse --check`) - not committable into the submodule
+                                itself since this repo doesn't control its upstream remote,
+                                so a tracked .patch file is what survives a fresh clone/CI
+                                checkout instead. See "Known limitations" below for what the
+                                current patch fixes.
 
 PHASE2_BUILD_TOX.md           Historical planning document written before the native
                                build was completed - useful for the "why" behind the
@@ -282,13 +312,16 @@ other locale folder to keep them in sync — nothing enforces this automatically
 
 ## Known limitations
 
-- **No real audio/video streaming yet.** Call *signaling* — `toxav_call`/
-  `toxav_answer`/`toxav_call_control` — is genuinely wired and really reaches the peer
-  (both sides observe a real CONNECTED state), but capturing the microphone/camera and
-  feeding frames to `toxav_audio_send_frame`/`toxav_video_send_frame`, and playing back
-  received frames, is a full separate `AudioRecord`/`Camera2`/`AudioTrack` media
-  pipeline that hasn't been built yet. A call currently connects but carries no live
-  audio/video payload.
+- **No speaker/earpiece toggle UI.** Audio calls default to earpiece, video calls to
+  speakerphone (holding a phone to your ear during video makes no sense) - a sensible
+  default rather than a user-facing control, since none was asked for.
+- **Video capture/send only runs while `CallScreen` is visible.** Audio
+  ([`AudioCallEngine`](app/src/main/java/org/meshly/app/media/AudioCallEngine.kt)) is
+  headless and survives the screen turning off, matching real phone-call behavior; video
+  ([`VideoCallSession`](app/src/main/java/org/meshly/app/media/VideoCallSession.kt))
+  needs a visible surface for local self-preview anyway, so it's tied to the screen's own
+  lifecycle rather than carrying the Android-14 background-camera foreground-service-type
+  plumbing that would otherwise be needed.
 - **No message history before a friendship, and no offline delivery.** Plain Tox has no
   store-and-forward: a message sent while the peer isn't connected is marked failed
   immediately rather than queued, matching `tox_friend_send_message`'s own

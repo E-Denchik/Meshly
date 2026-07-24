@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">Toggle camera</string>
     <string name="content_desc_flip_camera">Flip camera</string>
     <string name="content_desc_hang_up">Hang up</string>
-    <string name="video_preview_placeholder">Video preview surface (Phase 2: ToxAV video sink)</string>
+    <string name="video_preview_placeholder">Waiting for video…</string>
+    <string name="content_desc_local_camera_preview">Your camera preview</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">Chats</string>

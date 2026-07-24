@@ -37,7 +37,8 @@
     <string name="content_desc_toggle_camera">تشغيل/إيقاف الكاميرا</string>
     <string name="content_desc_flip_camera">تبديل الكاميرا</string>
     <string name="content_desc_hang_up">إنهاء المكالمة</string>
-    <string name="video_preview_placeholder">سطح معاينة الفيديو (المرحلة 2: مخرج فيديو ToxAV)</string>
+    <string name="video_preview_placeholder">بانتظار الفيديو…</string>
+    <string name="content_desc_local_camera_preview">معاينة كاميرتك</string>
 
     <!-- Bottom navigation tabs -->
     <string name="tab_chats">المحادثات</string>
