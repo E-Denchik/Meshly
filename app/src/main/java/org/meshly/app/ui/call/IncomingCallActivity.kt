@@ -24,12 +24,16 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.meshly.app.data.model.CallState
 import org.meshly.app.data.model.CallType
 import org.meshly.app.ui.theme.MeshlyTheme
 import org.meshly.app.ui.viewmodel.CallViewModel
@@ -49,6 +53,25 @@ class IncomingCallActivity : ComponentActivity() {
             MeshlyTheme {
                 val callViewModel: CallViewModel = viewModel()
                 var accepted by remember { mutableStateOf(false) }
+                val activeCall by callViewModel.activeCall.collectAsStateWithLifecycle()
+
+                // The caller can cancel (or the call can error out) while this is still showing
+                // the ringing screen, before the user ever taps accept/reject - unlike CallScreen,
+                // nothing else here is watching CallRepository's state, so without this the
+                // activity would just sit on screen forever after the call already died.
+                LaunchedEffect(activeCall?.state) {
+                    if (!accepted && activeCall?.state == CallState.ENDED) {
+                        finish()
+                    }
+                }
+
+                // Same reasoning as CallScreen's own BackHandler: without this, back on the
+                // ringing screen just finishes the activity while CallRepository still thinks
+                // this call is INCOMING, permanently blocking every later call as "already busy".
+                BackHandler(enabled = !accepted) {
+                    callViewModel.hangUpCall(callId)
+                    finish()
+                }
 
                 if (!accepted) {
                     IncomingCallScreen(

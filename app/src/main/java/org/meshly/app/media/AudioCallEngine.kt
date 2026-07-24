@@ -64,6 +64,8 @@ class AudioCallEngine(private val context: Context) {
     @Volatile private var running = false
     @Volatile var isMuted = false
         private set
+    @Volatile var isSpeakerOn = false
+        private set
 
     private var audioRecord: AudioRecord? = null
     private var audioTrack: AudioTrack? = null
@@ -120,6 +122,15 @@ class AudioCallEngine(private val context: Context) {
 
     fun setMuted(muted: Boolean) {
         isMuted = muted
+    }
+
+    /** Runtime earpiece/speaker switch, independent of the [start]-time default - lets the user
+     *  flip routing mid-call (e.g. an audio call started at the ear, then switched to speaker) the
+     *  way every other call app allows. No-op if [start] hasn't set up [audioManager] yet. */
+    fun setSpeakerphoneOn(on: Boolean) {
+        isSpeakerOn = on
+        @Suppress("DEPRECATION")
+        audioManager?.isSpeakerphoneOn = on
     }
 
     private fun startCapture(friendNumber: Int) {
@@ -220,6 +231,7 @@ class AudioCallEngine(private val context: Context) {
         manager.mode = AudioManager.MODE_IN_COMMUNICATION
         @Suppress("DEPRECATION")
         manager.isSpeakerphoneOn = speakerphoneOn
+        isSpeakerOn = speakerphoneOn
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -247,6 +259,7 @@ class AudioCallEngine(private val context: Context) {
         @Suppress("DEPRECATION")
         manager.isSpeakerphoneOn = false
         manager.mode = AudioManager.MODE_NORMAL
+        isSpeakerOn = false
         audioManager = null
         focusRequest = null
     }

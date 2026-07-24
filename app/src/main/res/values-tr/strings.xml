@@ -25,6 +25,7 @@
     <string name="call_state_connecting">Bağlanıyor…</string>
     <string name="call_state_connected">Bağlandı</string>
     <string name="call_state_ended">Arama sona erdi</string>
+    <string name="call_already_in_progress">Zaten bir aramadasınız</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">Gelen sesli arama</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">Mikrofonu aç/kapat</string>
+    <string name="content_desc_toggle_speaker">Hoparlörü aç/kapat</string>
     <string name="content_desc_toggle_camera">Kamerayı aç/kapat</string>
     <string name="content_desc_flip_camera">Kamerayı değiştir</string>
     <string name="content_desc_hang_up">Aramayı sonlandır</string>

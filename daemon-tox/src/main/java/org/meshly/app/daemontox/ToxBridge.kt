@@ -20,6 +20,7 @@
 
 package org.meshly.app.daemontox
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -51,7 +52,17 @@ object ToxBridge {
         System.loadLibrary("toxcore-jni")
     }
 
-    private val _events = MutableSharedFlow<ToxDaemonEvent>(extraBufferCapacity = 64)
+    // DROP_OLDEST, not the default SUSPEND: every event type (audio/video frames at 15-50/sec,
+    // plus one-shot signaling like CallStateChanged) shares this one buffer, and tryEmit() never
+    // suspends - under SUSPEND it just fails (drops the newest event, including a peer's FINISHED/
+    // ERROR call-state transition) whenever any single collector lags even briefly (e.g.
+    // AudioTrack.write() blocking on a buffer underrun). DROP_OLDEST instead evicts stale queued
+    // frames to make room, so tryEmit() for a fresh event always succeeds - self-healing instead
+    // of silently losing whichever event happened to be in flight during the stall.
+    private val _events = MutableSharedFlow<ToxDaemonEvent>(
+        extraBufferCapacity = 256,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val events: SharedFlow<ToxDaemonEvent> = _events.asSharedFlow()
 
     private val callbackAdapter = ToxCallbackAdapter(_events)
@@ -178,6 +189,14 @@ object ToxBridge {
     /** See [ToxNative.toxavCallControl]'s doc for the `control` ordinal mapping. */
     fun callControl(friendNumber: Int, control: Int): Boolean =
         ToxNative.toxavCallControl(requireAvHandle(), friendNumber, control)
+
+    /** See [ToxNative.toxavAudioSetBitRate]'s doc. */
+    fun setAudioBitRate(friendNumber: Int, bitRateKbps: Int): Boolean =
+        ToxNative.toxavAudioSetBitRate(requireAvHandle(), friendNumber, bitRateKbps)
+
+    /** See [ToxNative.toxavVideoSetBitRate]'s doc. */
+    fun setVideoBitRate(friendNumber: Int, bitRateKbps: Int): Boolean =
+        ToxNative.toxavVideoSetBitRate(requireAvHandle(), friendNumber, bitRateKbps)
 
     /** See [ToxNative.toxavAudioSendFrame]'s doc. */
     fun sendAudioFrame(friendNumber: Int, pcm: ShortArray, sampleCount: Int, channels: Int, samplingRate: Int): Boolean =

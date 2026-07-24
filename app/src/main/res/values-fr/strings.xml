@@ -25,6 +25,7 @@
     <string name="call_state_connecting">Connexion…</string>
     <string name="call_state_connected">Connecté</string>
     <string name="call_state_ended">Appel terminé</string>
+    <string name="call_already_in_progress">Vous êtes déjà en communication</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">Appel audio entrant</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">Activer/désactiver le micro</string>
+    <string name="content_desc_toggle_speaker">Activer/désactiver le haut-parleur</string>
     <string name="content_desc_toggle_camera">Activer/désactiver la caméra</string>
     <string name="content_desc_flip_camera">Changer de caméra</string>
     <string name="content_desc_hang_up">Raccrocher</string>

@@ -20,10 +20,12 @@
 
 package org.meshly.app.ui.call
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +44,8 @@ import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.FilledIconButton
@@ -89,10 +93,21 @@ fun CallScreen(
     viewModel: CallViewModel = viewModel()
 ) {
     val activeCall by viewModel.activeCall.collectAsStateWithLifecycle()
+    val toastContext = LocalContext.current
+    val alreadyInCallMessage = stringResource(R.string.call_already_in_progress)
 
     LaunchedEffect(peerToxId) {
         if (isOutgoing) {
-            viewModel.placeCall(peerToxId, peerDisplayName, callType)
+            val placed = viewModel.placeCall(peerToxId, peerDisplayName, callType)
+            if (placed == null) {
+                // A call was already active (e.g. the user backed out of a previous call
+                // without hanging up, then dialed someone else) - CallRepository refused to
+                // place this one rather than silently stealing the existing call's audio
+                // session. Tell the user why the screen they just opened is closing again
+                // instead of leaving them guessing.
+                Toast.makeText(toastContext, alreadyInCallMessage, Toast.LENGTH_SHORT).show()
+                onCallEnded()
+            }
             // Real signaling from here: toxav_call() was just sent by placeCall(), and
             // activeCall.state transitions (DIALING -> CONNECTED/ENDED) come from the peer's
             // real answer/reject via CallRepository's CallInviteReceived/CallStateChanged
@@ -108,6 +123,15 @@ fun CallScreen(
 
     val session = activeCall
     val friendNumber = session?.callId?.toIntOrNull()
+
+    // Without this, the system back gesture/button just pops the nav entry - CallRepository
+    // never hears about it, so _activeCall stays stuck at whatever state the call was in
+    // (DIALING forever, if the peer never answers) with no screen left watching it. Every
+    // subsequent call attempt then gets refused as "already busy" against a call nothing can
+    // ever end. Treating back as an explicit hang-up closes that gap the same way the button does.
+    BackHandler(enabled = session != null) {
+        session?.let { viewModel.hangUpCall(it.callId) }
+    }
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -151,7 +175,7 @@ fun CallScreen(
 
                     if (showingRemoteVideo) {
                         Image(
-                            bitmap = remoteFrame!!.asImageBitmap(),
+                            bitmap = remoteFrame!!.bitmap.asImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -236,6 +260,15 @@ fun CallScreen(
                             imageVector = if (session?.isMuted == true) Icons.Filled.MicOff else Icons.Filled.Mic,
                             contentDescription = stringResource(R.string.content_desc_toggle_mute)
                         )
+                    }
+
+                    if (callType == CallType.AUDIO) {
+                        FilledTonalIconButton(onClick = { viewModel.toggleSpeaker() }) {
+                            Icon(
+                                imageVector = if (session?.isSpeakerOn == true) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeDown,
+                                contentDescription = stringResource(R.string.content_desc_toggle_speaker)
+                            )
+                        }
                     }
 
                     if (callType == CallType.VIDEO) {

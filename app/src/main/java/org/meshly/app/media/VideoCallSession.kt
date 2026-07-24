@@ -91,9 +91,12 @@ class VideoCallSession(
     @Volatile private var callConnected = false
     @Volatile private var lastSendTimeMs = 0L
     @Volatile private var started = false
+    private var sentFrameCount = 0
+    private var receivedFrameCount = 0
+    private var remoteFrameSequence = 0L
 
-    private val _remoteFrame = MutableStateFlow<Bitmap?>(null)
-    val remoteFrame: StateFlow<Bitmap?> = _remoteFrame.asStateFlow()
+    private val _remoteFrame = MutableStateFlow<RemoteVideoFrame?>(null)
+    val remoteFrame: StateFlow<RemoteVideoFrame?> = _remoteFrame.asStateFlow()
 
     /** Binds the camera to [previewView] for local self-view and starts sending frames, and
      *  starts collecting/rendering the peer's incoming frames into [remoteFrame]. Idempotent -
@@ -114,11 +117,27 @@ class VideoCallSession(
                 // than just briefly-stale video that catches back up on its own.
                 .conflate()
                 .collect { frame ->
+                    if (receivedFrameCount++ % 50 == 0) {
+                        android.util.Log.d(
+                            "VideoCallSession",
+                            "recv frame #$receivedFrameCount ${frame.width}x${frame.height} " +
+                                "yStride=${frame.yStride} avgY=${frame.y.averageUnsigned()}"
+                        )
+                    }
                     val bitmap = YuvFrameConverter.renderToBitmap(
                         frame.width, frame.height, frame.y, frame.u, frame.v,
                         frame.yStride, frame.uStride, frame.vStride, receiveBuffers
                     )
-                    _remoteFrame.value = bitmap
+                    // renderToBitmap deliberately mutates the *same* Bitmap object frame to frame
+                    // (see its own doc - avoids a fresh native allocation every frame), so setting
+                    // _remoteFrame straight to that Bitmap would hand StateFlow the same reference
+                    // every time. StateFlow conflates a value with its predecessor when they're
+                    // equal, and Bitmap doesn't override equals(), so that's reference equality -
+                    // every frame after the first would silently get dropped and the screen would
+                    // freeze on frame one forever. Wrapping in a fresh RemoteVideoFrame each time
+                    // (equals()/hashCode() from its own sequence, not the reused bitmap) is what
+                    // makes each frame a genuinely distinct value StateFlow will actually emit.
+                    _remoteFrame.value = RemoteVideoFrame(bitmap, remoteFrameSequence++)
                 }
         }
     }
@@ -179,7 +198,15 @@ class VideoCallSession(
                                 val now = SystemClock.elapsedRealtime()
                                 if (now - lastSendTimeMs >= MIN_FRAME_INTERVAL_MS) {
                                     lastSendTimeMs = now
-                                    val i420 = YuvFrameConverter.imageProxyToI420(imageProxy, imageProxy.imageInfo.rotationDegrees, sendBuffers)
+                                    val rotation = imageProxy.imageInfo.rotationDegrees
+                                    val i420 = YuvFrameConverter.imageProxyToI420(imageProxy, rotation, sendBuffers)
+                                    if (sentFrameCount++ % 50 == 0) {
+                                        android.util.Log.d(
+                                            "VideoCallSession",
+                                            "send frame #$sentFrameCount ${i420.width}x${i420.height} " +
+                                                "rotation=$rotation avgY=${i420.y.averageUnsigned()}"
+                                        )
+                                    }
                                     val ok = ToxBridge.sendVideoFrame(friendNumber, i420.width, i420.height, i420.y, i420.u, i420.v)
                                     if (!ok) {
                                         android.util.Log.w("VideoCallSession", "sendVideoFrame failed for friend=$friendNumber ${i420.width}x${i420.height}")
@@ -204,4 +231,27 @@ class VideoCallSession(
     companion object {
         private const val MIN_FRAME_INTERVAL_MS = 66L // ~15fps cap, independent of sensor fps
     }
+}
+
+/** See the comment at its one call site in [VideoCallSession.start] for why this wrapper exists -
+ *  [sequence] is what gives each frame a distinct identity even though [bitmap] is frequently the
+ *  very same reused object as the previous frame's. */
+data class RemoteVideoFrame(val bitmap: Bitmap, val sequence: Long)
+
+/** Diagnostic-only: mean unsigned byte value of a Y plane, sampled every 16th byte so logging it
+ *  periodically (see [VideoCallSession.start]/`setAnalyzer`) doesn't itself become a per-frame
+ *  cost. A near-0 result means the plane really is black at the source, not just rendered wrong -
+ *  distinguishes a capture/encode problem from a decode/render one when a call reports washed-out
+ *  or black video. */
+private fun ByteArray.averageUnsigned(): Int {
+    if (isEmpty()) return 0
+    var sum = 0L
+    var count = 0
+    var i = 0
+    while (i < size) {
+        sum += this[i].toInt() and 0xFF
+        count++
+        i += 16
+    }
+    return if (count == 0) 0 else (sum / count).toInt()
 }

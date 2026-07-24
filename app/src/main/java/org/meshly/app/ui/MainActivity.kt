@@ -32,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
-import org.meshly.app.service.ToxDaemonService
 import org.meshly.app.ui.navigation.MeshlyNavHost
 import org.meshly.app.ui.theme.MeshlyTheme
 
@@ -49,7 +48,6 @@ class MainActivity : ComponentActivity() {
 
         pendingChatDeepLink = extractDeepLink(intent)
         requestRuntimePermissions()
-        startDaemonService()
 
         setContent {
             MeshlyTheme {
@@ -71,11 +69,6 @@ class MainActivity : ComponentActivity() {
         val toxId = intent?.getStringExtra(EXTRA_DEEPLINK_TOX_ID) ?: return null
         val displayName = intent.getStringExtra(EXTRA_DEEPLINK_DISPLAY_NAME) ?: toxId
         return toxId to displayName
-    }
-
-    private fun startDaemonService() {
-        val intent = Intent(this, ToxDaemonService::class.java)
-        ContextCompat.startForegroundService(this, intent)
     }
 
     private fun requestRuntimePermissions() {

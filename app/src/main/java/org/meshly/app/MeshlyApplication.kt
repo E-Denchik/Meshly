@@ -23,13 +23,16 @@ package org.meshly.app
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.os.Build
+import androidx.core.content.ContextCompat
 import org.meshly.app.daemontox.ToxBridge
 import org.meshly.app.data.local.AppDatabase
 import org.meshly.app.data.repository.CallRepository
 import org.meshly.app.data.repository.ChatRepository
 import org.meshly.app.data.repository.ContactRepository
 import org.meshly.app.data.repository.ToxSavedataStore
+import org.meshly.app.service.ToxDaemonService
 
 class MeshlyApplication : Application() {
 
@@ -72,6 +75,13 @@ class MeshlyApplication : Application() {
         chatRepository
         contactRepository
         callRepository
+        // Was only started from MainActivity.onCreate() - meaning a message/call arriving while
+        // the process is alive but MainActivity has never run in it (e.g. the system spun the
+        // process back up to honor ToxDaemonService's START_STICKY after a low-memory kill) had
+        // nothing running the tox_iterate loop to receive it, so no notification could ever fire.
+        // Application.onCreate() runs for every process start regardless of which component
+        // triggered it, so starting the daemon here instead makes it the single source of truth.
+        ContextCompat.startForegroundService(this, Intent(this, ToxDaemonService::class.java))
     }
 
     private fun createNotificationChannels() {

@@ -25,6 +25,7 @@
     <string name="call_state_connecting">جارٍ الاتصال…</string>
     <string name="call_state_connected">تم الاتصال</string>
     <string name="call_state_ended">انتهت المكالمة</string>
+    <string name="call_already_in_progress">أنت بالفعل في مكالمة</string>
 
     <!-- Incoming call screen -->
     <string name="incoming_audio_call">مكالمة صوتية واردة</string>
@@ -34,6 +35,7 @@
 
     <!-- In-call screen -->
     <string name="content_desc_toggle_mute">كتم/إلغاء كتم الميكروفون</string>
+    <string name="content_desc_toggle_speaker">تشغيل/إيقاف مكبر الصوت</string>
     <string name="content_desc_toggle_camera">تشغيل/إيقاف الكاميرا</string>
     <string name="content_desc_flip_camera">تبديل الكاميرا</string>
     <string name="content_desc_hang_up">إنهاء المكالمة</string>
